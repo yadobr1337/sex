@@ -230,7 +230,10 @@ async def server_has_capacity(session: AsyncSession, server: models.Server, curr
 
 
 async def pick_marzban_server(session: AsyncSession) -> Optional[models.MarzbanServer]:
-    servers = list((await session.scalars(select(models.MarzbanServer))).all())
+    try:
+        servers = list((await session.scalars(select(models.MarzbanServer))).all())
+    except Exception:
+        return None
     if not servers:
         return None
     for server in servers:
