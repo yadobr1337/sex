@@ -390,6 +390,8 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
     server: Optional[models.MarzbanServer] = None
     marz_user = await session.scalar(select(models.MarzbanUser).where(models.MarzbanUser.user_id == user.id))
 
+    link_value = make_wireguard_link(user.link_slug)
+
     if estimated_days <= 0:
         user.subscription_end = None
         user.link_suspended = True
@@ -399,30 +401,34 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
         user.allowed_devices = device_count
         user.link_suspended = False
 
-        if not marz_user:
-            server = await pick_marzban_server(session)
-            if not server:
-                user.link_suspended = True
-            else:
-                username = f"tg{user.telegram_id}"
-                sub_url = await marzban_upsert_client(server, username, expires_at, device_count)
-                marz_user = models.MarzbanUser(
-                    user_id=user.id, server_id=server.id, username=username, sub_url=sub_url, expires_at=expires_at
-                )
-                session.add(marz_user)
-        else:
-            server = await session.get(models.MarzbanServer, marz_user.server_id) if marz_user.server_id else None
-            if not server:
+        try:
+            if not marz_user:
                 server = await pick_marzban_server(session)
-            if server:
-                marz_user.server_id = server.id
-                sub_url = await marzban_upsert_client(server, marz_user.username, expires_at, device_count)
-                marz_user.sub_url = sub_url
-                marz_user.expires_at = expires_at
+                if server:
+                    username = f"tg{user.telegram_id}"
+                    sub_url = await marzban_upsert_client(server, username, expires_at, device_count)
+                    marz_user = models.MarzbanUser(
+                        user_id=user.id, server_id=server.id, username=username, sub_url=sub_url, expires_at=expires_at
+                    )
+                    session.add(marz_user)
+                    link_value = sub_url
+                else:
+                    user.link_suspended = True
+            else:
+                server = await session.get(models.MarzbanServer, marz_user.server_id) if marz_user.server_id else None
+                if not server:
+                    server = await pick_marzban_server(session)
+                if server:
+                    marz_user.server_id = server.id
+                    sub_url = await marzban_upsert_client(server, marz_user.username, expires_at, device_count)
+                    marz_user.sub_url = sub_url
+                    marz_user.expires_at = expires_at
+                    link_value = sub_url
+        except Exception:
+            # если не удалось создать клиента в Marzban, не роняем state
+            user.link_suspended = True
 
     await session.commit()
-
-    link_value = marz_user.sub_url if marz_user else make_wireguard_link(user.link_slug)
 
     return UserState(
         balance=user.balance,
