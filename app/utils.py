@@ -16,6 +16,9 @@ def validate_telegram_webapp_data(init_data: str, bot_token: str) -> dict:
 
     data = dict(parse_qsl(init_data, keep_blank_values=True))
     hash_value = data.pop("hash", None)
+    # Telegram adds optional signature; do not include it in the HMAC payload
+    data.pop("signature", None)
+
     if not hash_value:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid initData")
 
