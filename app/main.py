@@ -182,6 +182,8 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
         android_help_url=settings.android_help_url,
         support_url=f"https://t.me/{settings.support_username}",
         is_admin=settings.admin_tg_id == str(user.telegram_id),
+        price_30_days=settings.price_30_days,
+        estimated_days=int((user.balance / max(settings.price_30_days, 1)) * 30),
     )
 
 
@@ -465,6 +467,26 @@ async def admin_ui_servers(
     session.add(server)
     await session.commit()
     return {"ok": True, "server_id": server.id}
+
+
+@app.get("/admin/ui/servers/list")
+async def admin_ui_servers_list(_: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)):
+    servers = (await session.scalars(select(models.Server))).all()
+    return {"servers": [{"id": s.id, "name": s.name, "endpoint": s.endpoint, "capacity": s.capacity} for s in servers]}
+
+
+@app.post("/admin/ui/servers/delete")
+async def admin_ui_servers_delete(
+    payload: AdminServerDelete,
+    _: str = Depends(admin_ui_guard),
+    session: AsyncSession = Depends(get_session),
+):
+    server = await session.get(models.Server, payload.server_id)
+    if not server:
+        raise HTTPException(status_code=404, detail="Not found")
+    await session.delete(server)
+    await session.commit()
+    return {"ok": True}
 
 
 @app.post("/admin/ui/tariffs", response_model=TariffOut)

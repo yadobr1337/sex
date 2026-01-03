@@ -75,6 +75,7 @@ el("add-server").onclick = async () => {
   try {
     await api("/admin/ui/servers", { name, endpoint, capacity });
     setStatus("Сервер добавлен");
+    await loadServers();
   } catch (e) {
     setStatus(e.message, false);
   }
@@ -93,6 +94,46 @@ el("add-tariff").onclick = async () => {
     setStatus(e.message, false);
   }
 };
+
+async function loadServers() {
+  try {
+    const res = await fetch("/admin/ui/servers/list", {
+      headers: { "Content-Type": "application/json", ...(token ? { "X-Admin-Token": token } : {}) },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const list = el("server-list");
+    if (!list) return;
+    list.innerHTML = "";
+    data.servers.forEach((s) => {
+      const row = document.createElement("div");
+      row.className = "server-item";
+      row.innerHTML = `<div><div class="value">${s.name}</div><div class="label">${s.endpoint}</div></div>`;
+      const actions = document.createElement("div");
+      const del = document.createElement("button");
+      del.className = "ghost danger";
+      del.textContent = "Удалить";
+      del.onclick = async () => {
+        try {
+          await api("/admin/ui/servers/delete", { server_id: s.id });
+          setStatus("Сервер удалён");
+          await loadServers();
+        } catch (e) {
+          setStatus(e.message, false);
+        }
+      };
+      actions.appendChild(del);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+if (token) {
+  loadServers();
+}
 
 const userField = el("admin-user-id");
 

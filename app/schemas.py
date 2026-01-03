@@ -48,6 +48,8 @@ class UserState(BaseModel):
     ios_help_url: str
     android_help_url: str
     support_url: str
+    price_30_days: int
+    estimated_days: int
     is_admin: bool
 
 
@@ -92,6 +94,10 @@ class AdminServer(BaseModel):
     name: str
     endpoint: str
     capacity: int = 10
+
+
+class AdminServerDelete(BaseModel):
+    server_id: int
 
 
 class AdminLogin(BaseModel):

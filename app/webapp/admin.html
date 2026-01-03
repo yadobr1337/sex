@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>1VPN Admin</title>
   <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/admin_servers_list.css">
 </head>
 <body>
   <div class="background"></div>
@@ -41,6 +42,7 @@
         <input id="server-endpoint" placeholder="endpoint:port" />
         <input id="server-capacity" type="number" min="1" value="10" placeholder="Вместимость" />
         <button class="accent" id="add-server">Добавить сервер</button>
+        <div class="server-list" id="server-list"></div>
       </div>
 
       <div class="admin-block">

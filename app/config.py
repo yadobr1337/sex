@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     ios_help_url: str = "https://telegra.ph/ios-vpn-install"
     android_help_url: str = "https://telegra.ph/android-vpn-install"
     domain: str = "the1priority.ru"
+    price_30_days: int = 300
 
     model_config = {
         "env_file": ".env",
