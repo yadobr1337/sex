@@ -303,8 +303,6 @@ async def get_or_create_user(init_data: str, session: AsyncSession) -> models.Us
 
         username=tg_user.get("username"),
 
-        server_id=server.id,
-
         link_slug=new_slug(),
 
     )
