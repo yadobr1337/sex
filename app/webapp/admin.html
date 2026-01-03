@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1VPN Admin</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="background"></div>
+  <main class="container">
+    <section class="card">
+      <div class="section-title">Вход в админку</div>
+      <div class="admin-block">
+        <input id="login-username" placeholder="Логин" value="admin" />
+        <input id="login-password" placeholder="Пароль" type="password" value="admin" />
+        <button class="accent" id="login-btn">Войти</button>
+      </div>
+      <div class="admin-block" id="creds-block" hidden>
+        <div class="label">Смена логина/пароля</div>
+        <input id="new-username" placeholder="Новый логин" />
+        <input id="new-password" placeholder="Новый пароль" type="password" />
+        <button class="ghost" id="save-creds">Сохранить</button>
+      </div>
+    </section>
+
+    <section class="card admin" id="panel" hidden>
+      <div class="section-title">Действия</div>
+
+      <div class="admin-block">
+        <div class="label">Рассылка</div>
+        <textarea id="broadcast-text" rows="3" placeholder="Текст сообщения"></textarea>
+        <button class="accent" id="broadcast-btn">Отправить</button>
+      </div>
+
+      <div class="admin-block">
+        <div class="label">Сервер</div>
+        <input id="server-name" placeholder="Имя сервера" />
+        <input id="server-endpoint" placeholder="endpoint:port" />
+        <input id="server-capacity" type="number" min="1" value="10" placeholder="Вместимость" />
+        <button class="accent" id="add-server">Добавить сервер</button>
+      </div>
+
+      <div class="admin-block">
+        <div class="label">Тариф</div>
+        <input id="tariff-name" placeholder="Название" />
+        <input id="tariff-days" type="number" min="1" value="30" placeholder="Дней" />
+        <input id="tariff-price" type="number" min="1" value="300" placeholder="Цена ₽" />
+        <input id="tariff-devices" type="number" min="1" value="1" placeholder="Устройств" />
+        <button class="accent" id="add-tariff">Добавить тариф</button>
+      </div>
+
+      <div class="admin-block">
+        <div class="label">Баланс / Бан</div>
+        <input id="admin-user-id" placeholder="telegram_id или @username" />
+        <input id="admin-amount" type="number" placeholder="Сумма пополнения" />
+        <div class="admin-actions">
+          <button class="ghost" id="admin-topup">Пополнить</button>
+          <button class="ghost danger" id="admin-ban">Забанить</button>
+          <button class="ghost" id="admin-unban">Разбанить</button>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="/static/admin.js"></script>
+</body>
+</html>

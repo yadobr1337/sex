@@ -20,13 +20,15 @@ from .schemas import (
     AdminBroadcast,
     AdminServer,
     AdminTariff,
+    AdminCredUpdate,
+    AdminLogin,
     DeviceRequest,
     PaymentRequest,
     SubscriptionRequest,
     TariffOut,
     UserState,
 )
-from .utils import make_wireguard_link, new_slug, now_utc, validate_telegram_webapp_data
+from .utils import create_admin_ui_token, make_wireguard_link, new_slug, now_utc, validate_telegram_webapp_data, verify_admin_ui_token
 
 app = FastAPI(title="1VPN")
 app.add_middleware(
@@ -48,12 +50,28 @@ async def start_bot_polling():
 async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # ensure admin credential exists
+    async with AsyncSessionLocal() as session:
+        cred = await session.scalar(select(models.AdminCredential).limit(1))
+        if not cred:
+            session.add(models.AdminCredential(username="admin", password="admin"))
+            await session.commit()
     asyncio.create_task(start_bot_polling())
 
 
 @app.on_event("shutdown")
 async def shutdown():
     await bot.session.close()
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index():
+    return FileResponse("app/webapp/index.html")
+
+
+@app.get("/admin-ui", response_class=HTMLResponse)
+async def admin_ui_page():
+    return FileResponse("app/webapp/admin.html")
 
 
 def payment_total(price: int, base_devices: int, requested_devices: int) -> int:
@@ -311,6 +329,18 @@ def ensure_admin_user(user: models.User):
     raise HTTPException(status_code=403, detail="Admin only")
 
 
+async def ensure_admin_ui(token: str, session: AsyncSession) -> str:
+    username = verify_admin_ui_token(token)
+    cred = await session.scalar(select(models.AdminCredential).where(models.AdminCredential.username == username))
+    if not cred:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    return username
+
+
+async def admin_ui_guard(x_admin_token: str = Header(..., alias="X-Admin-Token"), session: AsyncSession = Depends(get_session)):
+    return await ensure_admin_ui(x_admin_token, session)
+
+
 @app.post("/admin/broadcast")
 async def admin_broadcast(
     payload: AdminBroadcast,
@@ -382,6 +412,100 @@ async def admin_server(
     session.add(server)
     await session.commit()
     return {"ok": True, "server_id": server.id}
+
+
+@app.post("/admin/ui/login")
+async def admin_ui_login(payload: AdminLogin, session: AsyncSession = Depends(get_session)):
+    cred = await session.scalar(select(models.AdminCredential).where(models.AdminCredential.username == payload.username))
+    if not cred or cred.password != payload.password:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = create_admin_ui_token(payload.username)
+    return {"token": token}
+
+
+@app.post("/admin/ui/creds")
+async def admin_ui_creds(
+    payload: AdminCredUpdate,
+    _: str = Depends(admin_ui_guard),
+    session: AsyncSession = Depends(get_session),
+):
+    cred = await session.scalar(select(models.AdminCredential).limit(1))
+    if not cred:
+        cred = models.AdminCredential(username=payload.username, password=payload.password)
+        session.add(cred)
+    else:
+        cred.username = payload.username
+        cred.password = payload.password
+    await session.commit()
+    return {"ok": True}
+
+
+@app.post("/admin/ui/broadcast")
+async def admin_ui_broadcast(
+    payload: AdminBroadcast,
+    _: str = Depends(admin_ui_guard),
+    session: AsyncSession = Depends(get_session),
+):
+    users = (await session.scalars(select(models.User))).all()
+    for item in users:
+        try:
+            await bot.send_message(int(item.telegram_id), payload.message, reply_markup=webapp_keyboard())
+        except Exception:
+            continue
+    return {"sent": len(users)}
+
+
+@app.post("/admin/ui/servers")
+async def admin_ui_servers(
+    payload: AdminServer,
+    _: str = Depends(admin_ui_guard),
+    session: AsyncSession = Depends(get_session),
+):
+    server = models.Server(name=payload.name, endpoint=payload.endpoint, capacity=payload.capacity)
+    session.add(server)
+    await session.commit()
+    return {"ok": True, "server_id": server.id}
+
+
+@app.post("/admin/ui/tariffs", response_model=TariffOut)
+async def admin_ui_tariffs(
+    payload: AdminTariff,
+    _: str = Depends(admin_ui_guard),
+    session: AsyncSession = Depends(get_session),
+):
+    tariff = models.Tariff(name=payload.name, days=payload.days, price=payload.price, base_devices=payload.base_devices)
+    session.add(tariff)
+    await session.commit()
+    await session.refresh(tariff)
+    return tariff
+
+
+@app.post("/admin/ui/topup")
+async def admin_ui_topup(
+    payload: AdminBalance,
+    _: str = Depends(admin_ui_guard),
+    session: AsyncSession = Depends(get_session),
+):
+    target = await session.scalar(find_user_query(payload.telegram_id, payload.username))
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    target.balance += payload.amount
+    await session.commit()
+    return {"ok": True, "balance": target.balance}
+
+
+@app.post("/admin/ui/ban")
+async def admin_ui_ban(
+    payload: AdminBan,
+    _: str = Depends(admin_ui_guard),
+    session: AsyncSession = Depends(get_session),
+):
+    target = await session.scalar(find_user_query(payload.telegram_id, payload.username))
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    target.banned = payload.banned
+    await session.commit()
+    return {"ok": True, "banned": target.banned}
 
 
 @app.get("/{slug}")

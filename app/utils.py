@@ -1,4 +1,5 @@
 import datetime as dt
+import datetime as dt
 import hmac
 import json
 import secrets
@@ -6,6 +7,7 @@ from hashlib import sha256
 from typing import Optional
 
 from fastapi import HTTPException, status
+from itsdangerous import BadSignature, TimestampSigner
 
 from .config import settings
 
@@ -49,3 +51,18 @@ def new_slug() -> str:
 def ensure_admin(secret: str):
     if secret != settings.admin_secret:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin token")
+
+
+def make_admin_ui_signer() -> TimestampSigner:
+    return TimestampSigner(settings.admin_secret or "admin-ui")
+
+
+def create_admin_ui_token(username: str) -> str:
+    return make_admin_ui_signer().sign(username).decode()
+
+
+def verify_admin_ui_token(token: str) -> str:
+    try:
+        return make_admin_ui_signer().unsign(token, max_age=60 * 60 * 12).decode()
+    except BadSignature as exc:  # noqa: BLE001
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin token") from exc

@@ -245,14 +245,15 @@ body {
 }
 
 .helpers {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 a.ghost {
   text-align: center;
   text-decoration: none;
+  flex: 1 1 calc(33% - 8px);
 }
 
 .admin {
@@ -300,5 +301,9 @@ a.ghost {
 
   .stats button {
     grid-column: span 2;
+  }
+
+  a.ghost {
+    flex: 1 1 100%;
   }
 }

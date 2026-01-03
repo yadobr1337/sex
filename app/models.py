@@ -79,3 +79,12 @@ class Payment(Base):
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=dt.datetime.utcnow)
 
     user: Mapped["User"] = relationship("User", back_populates="payments")
+
+
+class AdminCredential(Base):
+    __tablename__ = "admin_credentials"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(String(64), unique=True)
+    password: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=dt.datetime.utcnow)

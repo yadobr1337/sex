@@ -92,3 +92,13 @@ class AdminServer(BaseModel):
     name: str
     endpoint: str
     capacity: int = 10
+
+
+class AdminLogin(BaseModel):
+    username: str
+    password: str
+
+
+class AdminCredUpdate(BaseModel):
+    username: str
+    password: str
