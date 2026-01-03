@@ -58,7 +58,7 @@ body {
   width: 160px;
   height: 160px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 122, 24, 0.3), rgba(255, 59, 48, 0.05));
+  background: radial-gradient(circle, rgba(255, 59, 48, 0.35), rgba(255, 59, 48, 0.05));
   animation: pulse 3s infinite;
   filter: blur(6px);
 }
@@ -78,10 +78,10 @@ body {
   font-size: 38px;
   font-weight: 800;
   letter-spacing: 1px;
-  color: #fff;
+  color: #ff3b30;
   position: relative;
   z-index: 1;
-  text-shadow: 0 10px 40px rgba(255, 122, 24, 0.45);
+  text-shadow: 0 10px 40px rgba(255, 59, 48, 0.6);
 }
 
 .tagline {
@@ -258,12 +258,41 @@ a.ghost {
 
 .admin {
   border-color: rgba(241, 196, 15, 0.4);
+  position: relative;
+  overflow: hidden;
 }
 
 .admin-row, .admin-actions {
   display: flex;
   gap: 8px;
   margin-top: 8px;
+}
+
+.pulse-card::before, .pulse-card::after {
+  content: "";
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 59, 48, 0.25), transparent 60%);
+  filter: blur(14px);
+  animation: pulse 4s infinite;
+  top: -60px;
+  right: -60px;
+  z-index: 0;
+}
+
+.pulse-card::after {
+  animation-delay: 1.2s;
+  background: radial-gradient(circle, rgba(241, 196, 15, 0.25), transparent 60%);
+  top: auto;
+  bottom: -60px;
+  left: -60px;
+}
+
+.pulse-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .admin input, .admin textarea {

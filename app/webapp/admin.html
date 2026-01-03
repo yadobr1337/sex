@@ -9,23 +9,25 @@
 <body>
   <div class="background"></div>
   <main class="container">
-    <section class="card">
-      <div class="section-title">Вход в админку</div>
-      <div class="admin-block">
+    <section class="card admin pulse-card">
+      <div class="section-title">Админка 1VPN</div>
+      <div class="admin-block" id="login-block">
         <input id="login-username" placeholder="Логин" value="admin" />
         <input id="login-password" placeholder="Пароль" type="password" value="admin" />
         <button class="accent" id="login-btn">Войти</button>
       </div>
-      <div class="admin-block" id="creds-block" hidden>
+      <div id="status-line" class="label"></div>
+    </section>
+
+    <section class="card admin pulse-card" id="panel" hidden>
+      <div class="section-title">Действия</div>
+
+      <div class="admin-block" id="creds-block">
         <div class="label">Смена логина/пароля</div>
         <input id="new-username" placeholder="Новый логин" />
         <input id="new-password" placeholder="Новый пароль" type="password" />
         <button class="ghost" id="save-creds">Сохранить</button>
       </div>
-    </section>
-
-    <section class="card admin" id="panel" hidden>
-      <div class="section-title">Действия</div>
 
       <div class="admin-block">
         <div class="label">Рассылка</div>

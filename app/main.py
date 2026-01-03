@@ -317,9 +317,9 @@ async def yookassa_hook(request: Request, session: AsyncSession = Depends(get_se
 
 def find_user_query(telegram_id: Optional[str], username: Optional[str]):
     if telegram_id:
-        return select(models.User).where(models.User.telegram_id == telegram_id)
+        return select(models.User).where(models.User.telegram_id == str(telegram_id).lstrip("@"))
     if username:
-        return select(models.User).where(models.User.username == username)
+        return select(models.User).where(models.User.username == str(username).lstrip("@"))
     raise HTTPException(status_code=400, detail="Нужен telegram_id или username")
 
 
