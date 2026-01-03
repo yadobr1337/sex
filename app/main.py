@@ -1,19 +1,31 @@
 import asyncio
+
 import math
-from datetime import timedelta
+from datetime import timedelta, datetime
 from typing import Optional
 
+import aiohttp
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+
 from fastapi.responses import FileResponse, HTMLResponse
+
 from fastapi.staticfiles import StaticFiles
+
 from sqlalchemy import func, select
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
+
+
 from . import models
+
 from .bot import bot, dp, webapp_keyboard
+
 from .config import settings
+
 from .database import Base, engine, get_session, AsyncSessionLocal
+
 from .schemas import (
     AdminBalance,
     AdminBan,
@@ -25,165 +37,378 @@ from .schemas import (
     AdminCredUpdate,
     AdminLogin,
     AdminPrice,
+    AdminMarzbanServer,
+    AdminMarzbanServerDelete,
     DeviceRequest,
     PaymentRequest,
     SubscriptionRequest,
     TariffOut,
     UserState,
+    MarzbanServerOut,
 )
 from .utils import create_admin_ui_token, make_wireguard_link, new_slug, now_utc, validate_telegram_webapp_data, verify_admin_ui_token
 
+
+
 app = FastAPI(title="1VPN")
+
 app.add_middleware(
+
     CORSMiddleware,
+
     allow_origins=["*"],
+
     allow_credentials=True,
+
     allow_methods=["*"],
+
     allow_headers=["*"],
+
 )
+
+
 
 app.mount("/static", StaticFiles(directory="app/webapp"), name="static")
 
 
+
+
+
 async def start_bot_polling():
+
     await dp.start_polling(bot)
 
 
+
+
+
 @app.on_event("startup")
+
 async def startup():
+
     async with engine.begin() as conn:
+
         await conn.run_sync(Base.metadata.create_all)
+
     # ensure admin credential exists
+
     async with AsyncSessionLocal() as session:
+
         cred = await session.scalar(select(models.AdminCredential).limit(1))
+
         if not cred:
+
             session.add(models.AdminCredential(username="admin", password="admin"))
+
             await session.commit()
+
     asyncio.create_task(start_bot_polling())
 
 
+
+
+
 @app.on_event("shutdown")
+
 async def shutdown():
+
     await bot.session.close()
 
 
+
+
+
 @app.get("/", response_class=HTMLResponse)
+
 async def index():
+
     return FileResponse("app/webapp/index.html")
 
 
+
+
+
 @app.get("/admin-ui", response_class=HTMLResponse)
+
 async def admin_ui_page():
+
     return FileResponse("app/webapp/admin.html")
 
 
+
+
+
 def payment_total(price: int, base_devices: int, requested_devices: int) -> int:
+
     per_device = price / max(base_devices, 1)
+
     return math.ceil(per_device * requested_devices)
 
 
+
+
+
 async def pick_available_server(session: AsyncSession, current_user_id: Optional[int] = None) -> Optional[models.Server]:
+
     servers = list((await session.scalars(select(models.Server))).all())
+
     if not servers:
+
         return None
+
     for server in servers:
+
         if await server_has_capacity(session, server, current_user_id):
+
             return server
+
     return None
+
+
+
 
 
 async def server_has_capacity(session: AsyncSession, server: models.Server, current_user_id: Optional[int] = None) -> bool:
     active_count = await session.scalar(
+
         select(func.count(models.User.id)).where(
+
             models.User.server_id == server.id,
+
             models.User.subscription_end.is_not(None),
+
             models.User.subscription_end > now_utc(),
+
         )
+
     )
+
     adjusted = (active_count or 0)
+
     if current_user_id:
+
         owns_slot = await session.scalar(
+
             select(func.count(models.User.id)).where(
+
                 models.User.id == current_user_id,
+
                 models.User.server_id == server.id,
+
                 models.User.subscription_end.is_not(None),
+
                 models.User.subscription_end > now_utc(),
+
             )
+
         )
+
         adjusted = max(0, adjusted - (owns_slot or 0))
+
     return adjusted < server.capacity
 
 
+async def pick_marzban_server(session: AsyncSession) -> Optional[models.MarzbanServer]:
+    servers = list((await session.scalars(select(models.MarzbanServer))).all())
+    if not servers:
+        return None
+    for server in servers:
+        used = await session.scalar(
+            select(func.count(models.MarzbanUser.id)).where(models.MarzbanUser.server_id == server.id)
+        )
+        if (used or 0) < server.capacity:
+            return server
+    return None
+
+
+async def marzban_upsert_client(
+    server: models.MarzbanServer, username: str, expires_at: Optional[datetime], max_devices: int
+) -> str:
+    """Создаёт или обновляет клиента на Marzban, возвращает subscription URL."""
+    base = server.api_url.rstrip("/")
+    headers = {"Authorization": f"Bearer {server.api_token}", "Content-Type": "application/json"}
+    payload = {
+        "username": username,
+        "expire": int(expires_at.timestamp()) if expires_at else None,
+        "ips": max_devices,
+    }
+    async with aiohttp.ClientSession() as http:
+        create_url = f"{base}/api/admin/clients"
+        async with http.post(create_url, json=payload, headers=headers) as resp:
+            if resp.status not in (200, 201, 204, 409):
+                detail = await resp.text()
+                raise HTTPException(status_code=503, detail=f"Marzban create failed: {detail}")
+        update_url = f"{base}/api/admin/clients/{username}"
+        async with http.put(update_url, json=payload, headers=headers) as resp:
+            if resp.status not in (200, 201, 204):
+                detail = await resp.text()
+                raise HTTPException(status_code=503, detail=f"Marzban update failed: {detail}")
+        sub_url = f"{base}/api/admin/clients/{username}/subscription"
+        async with http.get(sub_url, headers=headers) as resp:
+            if resp.status in (200, 201):
+                try:
+                    data = await resp.json()
+                    return data.get("subscription_url") or data.get("url") or sub_url
+                except Exception:
+                    pass
+        return sub_url
+
+
 async def get_or_create_user(init_data: str, session: AsyncSession) -> models.User:
+
     tg_user = validate_telegram_webapp_data(init_data, settings.bot_token)
+
     tg_id = str(tg_user["id"])
+
     user = await session.scalar(select(models.User).where(models.User.telegram_id == tg_id))
+
     if user:
+
         return user
 
+
+
     server = await pick_available_server(session)
+
     if not server:
+
         raise HTTPException(status_code=503, detail="Нет свободных серверов. Напишите в поддержку.")
 
+
+
     user = models.User(
+
         telegram_id=tg_id,
+
         username=tg_user.get("username"),
+
         server_id=server.id,
+
         link_slug=new_slug(),
+
     )
+
     session.add(user)
+
     await session.commit()
+
     await session.refresh(user)
+
     return user
+
+
+
 
 
 async def get_current_user(
+
     x_init_data: str = Header(..., alias="X-Telegram-Init"),
+
     session: AsyncSession = Depends(get_session),
+
 ) -> models.User:
+
     user = await get_or_create_user(x_init_data, session)
+
     if user.banned:
+
         raise HTTPException(status_code=403, detail="Вы заблокированы")
+
     return user
 
 
+
+
+
 @app.get("/", response_class=HTMLResponse)
+
 async def index():
+
     return FileResponse("app/webapp/index.html")
 
 
+
+
+
 @app.post("/api/init")
+
 async def init_user(
+
     request: Request,
+
     x_init: str | None = Header(None, alias="X-Telegram-Init"),
+
     session: AsyncSession = Depends(get_session),
+
 ):
+
     data = await request.json()
+
     init_data = data.get("initData") or x_init
+
     if not init_data:
+
         raise HTTPException(status_code=400, detail="initData required")
+
     user = await get_or_create_user(init_data, session)
+
     return {"ok": True, "link": make_wireguard_link(user.link_slug)}
+
+
+
 
 
 @app.get("/api/state", response_model=UserState)
 async def state(user: models.User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
-    tariffs = (await session.scalars(select(models.Tariff))).all()
+    tariffs = []
     devices = (await session.scalars(select(models.Device).where(models.Device.user_id == user.id))).all()
-    server = await session.get(models.Server, user.server_id) if user.server_id else None
-    if not server:
-        server = await pick_available_server(session, user.id)
-        if server:
-            user.server_id = server.id
-            await session.commit()
-    if user.link_suspended and user.allowed_devices and len(devices) <= user.allowed_devices:
+
+    device_count = len(devices) or 1
+    price_per_day_per_device = (settings.price_30_days / 30) * device_count if settings.price_30_days else 0
+    estimated_days = int(user.balance / price_per_day_per_device) if price_per_day_per_device else 0
+
+    server: Optional[models.MarzbanServer] = None
+    marz_user = await session.scalar(select(models.MarzbanUser).where(models.MarzbanUser.user_id == user.id))
+
+    if estimated_days <= 0:
+        user.subscription_end = None
+        user.link_suspended = True
+    else:
+        expires_at = now_utc() + timedelta(days=estimated_days)
+        user.subscription_end = expires_at
+        user.allowed_devices = device_count
         user.link_suspended = False
-        await session.commit()
+
+        if not marz_user:
+            server = await pick_marzban_server(session)
+            if not server:
+                user.link_suspended = True
+            else:
+                username = f"tg{user.telegram_id}"
+                sub_url = await marzban_upsert_client(server, username, expires_at, device_count)
+                marz_user = models.MarzbanUser(
+                    user_id=user.id, server_id=server.id, username=username, sub_url=sub_url, expires_at=expires_at
+                )
+                session.add(marz_user)
+        else:
+            server = await session.get(models.MarzbanServer, marz_user.server_id) if marz_user.server_id else None
+            if not server:
+                server = await pick_marzban_server(session)
+            if server:
+                marz_user.server_id = server.id
+                sub_url = await marzban_upsert_client(server, marz_user.username, expires_at, device_count)
+                marz_user.sub_url = sub_url
+                marz_user.expires_at = expires_at
+
+    await session.commit()
+
+    link_value = marz_user.sub_url if marz_user else make_wireguard_link(user.link_slug)
+
     return UserState(
         balance=user.balance,
         subscription_end=user.subscription_end,
         allowed_devices=user.allowed_devices,
-        link=make_wireguard_link(user.link_slug),
+        link=link_value,
         server=server,
         devices=devices,
         tariffs=tariffs,
@@ -194,314 +419,661 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
         support_url=f"https://t.me/{settings.support_username}",
         is_admin=settings.admin_tg_id == str(user.telegram_id),
         price_30_days=settings.price_30_days,
-        estimated_days=int((user.balance / max(settings.price_30_days, 1)) * 30),
+        estimated_days=estimated_days,
     )
 
 
-@app.post("/api/topup")
+@app.post("/api/topup"@app.post("/api/topup")
+
 async def create_topup(
+
     payload: PaymentRequest,
+
     user: models.User = Depends(get_current_user),
+
     session: AsyncSession = Depends(get_session),
+
 ):
+
     if payload.amount < 50:
-        raise HTTPException(status_code=400, detail="Минимальная сумма 50₽")
+
+        raise HTTPException(status_code=400, detail="Минимальная сумма 50?")
+
+
 
     payment = models.Payment(user_id=user.id, amount=payload.amount, status="pending")
+
     session.add(payment)
+
     await session.commit()
+
     await session.refresh(payment)
 
+
+
     # YooKassa payment creation (SBP)
+
     try:
+
         from yookassa import Configuration, Payment
 
+
+
         Configuration.account_id = settings.yookassa_shop_id
+
         Configuration.secret_key = settings.yookassa_secret_key
 
+
+
         payment_response = Payment.create(
+
             {
+
                 "amount": {"value": f"{payload.amount}.00", "currency": "RUB"},
+
                 "confirmation": {"type": "redirect", "return_url": f"{settings.webapp_url}?paid={payment.id}"},
+
                 "payment_method_data": {"type": "sbp"},
+
                 "description": f"1VPN пополнение #{payment.id}",
+
                 "metadata": {"payment_id": payment.id},
+
             }
+
         )
+
         payment.provider_payment_id = payment_response.id
+
         await session.commit()
+
         return {"confirmation_url": payment_response.confirmation.confirmation_url, "payment_id": payment.id}
+
     except Exception:
+
         # Fallback for demo without valid credentials
+
         return {
+
             "confirmation_url": f"https://yoomoney.ru/quickpay/confirm.xml?label={payment.id}",
+
             "payment_id": payment.id,
+
         }
 
 
+
+
+
 @app.post("/api/subscription")
+
 async def start_subscription(
+
     payload: SubscriptionRequest,
+
     user: models.User = Depends(get_current_user),
+
     session: AsyncSession = Depends(get_session),
+
 ):
+
     tariff = await session.get(models.Tariff, payload.tariff_id)
+
     if not tariff:
+
         raise HTTPException(status_code=404, detail="Тариф не найден")
 
+
+
     total = payment_total(tariff.price, tariff.base_devices, payload.devices)
+
     if user.balance < total:
+
         raise HTTPException(status_code=400, detail="Недостаточно средств на балансе")
 
+
+
     server = await session.get(models.Server, user.server_id) if user.server_id else None
+
     if server and not await server_has_capacity(session, server, user.id):
+
         server = None
+
     if not server:
+
         server = await pick_available_server(session, user.id)
+
     if not server:
+
         raise HTTPException(status_code=503, detail="Нет свободных серверов. Напишите в поддержку.")
 
+
+
     user.balance -= total
+
     user.allowed_devices = payload.devices
+
     user.server_id = server.id
+
     user.link_suspended = False
+
     now = now_utc()
+
     if user.subscription_end and user.subscription_end > now:
+
         user.subscription_end = user.subscription_end + timedelta(days=tariff.days)
+
     else:
+
         user.subscription_end = now + timedelta(days=tariff.days)
 
+
+
     await session.commit()
+
     await session.refresh(user)
+
     return {"ok": True, "subscription_end": user.subscription_end, "balance": user.balance}
 
 
+
+
+
 @app.post("/api/device")
+
 async def register_device(
+
     payload: DeviceRequest,
+
     user: models.User = Depends(get_current_user),
+
     session: AsyncSession = Depends(get_session),
+
 ):
+
     existing = await session.scalar(
+
         select(models.Device).where(models.Device.user_id == user.id, models.Device.fingerprint == payload.fingerprint)
+
     )
+
     if not existing:
+
         device = models.Device(user_id=user.id, fingerprint=payload.fingerprint, label=payload.label)
+
         session.add(device)
+
         await session.commit()
+
     else:
+
         existing.last_seen = now_utc()
+
         await session.commit()
+
     count = await session.scalar(select(func.count(models.Device.id)).where(models.Device.user_id == user.id))
+
     if count and count > (user.allowed_devices or 1):
+
         user.allowed_devices = count
+
     user.link_suspended = False
+
     await session.commit()
+
     return {"ok": True, "devices": count}
 
 
+
+
+
 @app.delete("/api/device/{device_id}")
+
 async def delete_device(
+
     device_id: int,
+
     user: models.User = Depends(get_current_user),
+
     session: AsyncSession = Depends(get_session),
+
 ):
+
     device = await session.get(models.Device, device_id)
+
     if not device or device.user_id != user.id:
+
         raise HTTPException(status_code=404, detail="Device not found")
+
     await session.delete(device)
+
     await session.commit()
+
+    # обновляем лимит устройств после удаления
+
+    remaining = await session.scalar(select(func.count(models.Device.id)).where(models.Device.user_id == user.id))
+
+    user.allowed_devices = max(remaining or 0, 1)
+
+    await session.commit()
+
     return {"ok": True}
+
+
+
 
 
 @app.post("/api/webhooks/yookassa")
+
 async def yookassa_hook(request: Request, session: AsyncSession = Depends(get_session)):
+
     data = await request.json()
+
     metadata = data.get("object", {}).get("metadata", {})
+
     payment_id = metadata.get("payment_id")
+
     status_value = data.get("object", {}).get("status")
+
     if not payment_id:
+
         return {"ok": False}
+
     payment: models.Payment | None = await session.get(models.Payment, int(payment_id))
+
     if not payment or payment.status == "succeeded":
+
         return {"ok": True}
+
     if status_value == "succeeded":
+
         payment.status = "succeeded"
+
         user = await session.get(models.User, payment.user_id)
+
         if user:
+
             user.balance += payment.amount
-            await bot.send_message(int(user.telegram_id), f"Баланс пополнен на {payment.amount}₽", reply_markup=webapp_keyboard())
+
+            await bot.send_message(int(user.telegram_id), f"Баланс пополнен на {payment.amount}?", reply_markup=webapp_keyboard())
+
     else:
+
         payment.status = status_value
+
     await session.commit()
+
     return {"ok": True}
+
+
+
 
 
 def find_user_query(telegram_id: Optional[str], username: Optional[str]):
+
     if telegram_id:
+
         return select(models.User).where(models.User.telegram_id == str(telegram_id).lstrip("@"))
+
     if username:
+
         return select(models.User).where(models.User.username == str(username).lstrip("@"))
+
     raise HTTPException(status_code=400, detail="Нужен telegram_id или username")
 
 
+
+
+
 def ensure_admin_user(user: models.User):
+
     if settings.admin_tg_id and str(user.telegram_id) == settings.admin_tg_id:
+
         return
+
     raise HTTPException(status_code=403, detail="Admin only")
 
 
+
+
+
 async def ensure_admin_ui(token: str, session: AsyncSession) -> str:
+
     username = verify_admin_ui_token(token)
+
     cred = await session.scalar(select(models.AdminCredential).where(models.AdminCredential.username == username))
+
     if not cred:
+
         raise HTTPException(status_code=401, detail="Invalid admin token")
+
     return username
 
 
+
+
+
 async def admin_ui_guard(x_admin_token: str = Header(..., alias="X-Admin-Token"), session: AsyncSession = Depends(get_session)):
+
     return await ensure_admin_ui(x_admin_token, session)
 
 
+
+
+
 @app.post("/admin/broadcast")
+
 async def admin_broadcast(
+
     payload: AdminBroadcast,
+
     user: models.User = Depends(get_current_user),
+
     session: AsyncSession = Depends(get_session),
+
 ):
+
     ensure_admin_user(user)
+
     users = (await session.scalars(select(models.User))).all()
+
     for item in users:
+
         try:
+
             await bot.send_message(int(item.telegram_id), payload.message, reply_markup=webapp_keyboard())
+
         except Exception:
+
             continue
+
     return {"sent": len(users)}
+
+
+
 
 
 @app.post("/admin/ban")
+
 async def admin_ban(
+
     payload: AdminBan,
+
     user: models.User = Depends(get_current_user),
+
     session: AsyncSession = Depends(get_session),
+
 ):
+
     ensure_admin_user(user)
+
     target = await session.scalar(find_user_query(payload.telegram_id, payload.username))
+
     if not target:
+
         raise HTTPException(status_code=404, detail="User not found")
+
     target.banned = payload.banned
+
     await session.commit()
+
     return {"ok": True, "banned": target.banned}
 
 
+
+
+
 @app.post("/admin/topup")
+
 async def admin_topup(
+
     payload: AdminBalance,
+
     user: models.User = Depends(get_current_user),
+
     session: AsyncSession = Depends(get_session),
+
 ):
+
     ensure_admin_user(user)
+
     target = await session.scalar(find_user_query(payload.telegram_id, payload.username))
+
     if not target:
+
         raise HTTPException(status_code=404, detail="User not found")
+
     target.balance += payload.amount
+
     await session.commit()
+
     return {"ok": True, "balance": target.balance}
 
 
+
+
+
 @app.post("/admin/tariffs", response_model=TariffOut)
+
 async def admin_tariff(
+
     payload: AdminTariff,
+
     user: models.User = Depends(get_current_user),
+
     session: AsyncSession = Depends(get_session),
+
 ):
+
     ensure_admin_user(user)
+
     tariff = models.Tariff(name=payload.name, days=payload.days, price=payload.price, base_devices=payload.base_devices)
+
     session.add(tariff)
+
     await session.commit()
+
     await session.refresh(tariff)
+
     return tariff
 
 
+
+
+
 @app.post("/admin/servers")
+
 async def admin_server(
+
     payload: AdminServer,
+
     user: models.User = Depends(get_current_user),
+
     session: AsyncSession = Depends(get_session),
+
 ):
+
     ensure_admin_user(user)
+
     server = models.Server(name=payload.name, endpoint=payload.endpoint, capacity=payload.capacity)
+
     session.add(server)
+
     await session.commit()
+
     return {"ok": True, "server_id": server.id}
+
+
+
 
 
 @app.post("/admin/ui/login")
+
 async def admin_ui_login(payload: AdminLogin, session: AsyncSession = Depends(get_session)):
+
     cred = await session.scalar(select(models.AdminCredential).where(models.AdminCredential.username == payload.username))
+
     if not cred or cred.password != payload.password:
+
         raise HTTPException(status_code=401, detail="Invalid credentials")
+
     token = create_admin_ui_token(payload.username)
+
     return {"token": token}
 
 
+
+
+
 @app.post("/admin/ui/creds")
+
 async def admin_ui_creds(
+
     payload: AdminCredUpdate,
+
     _: str = Depends(admin_ui_guard),
+
     session: AsyncSession = Depends(get_session),
+
 ):
+
     cred = await session.scalar(select(models.AdminCredential).limit(1))
+
     if not cred:
+
         cred = models.AdminCredential(username=payload.username, password=payload.password)
+
         session.add(cred)
+
     else:
+
         cred.username = payload.username
+
         cred.password = payload.password
+
     await session.commit()
+
     return {"ok": True}
 
 
+
+
+
 @app.post("/admin/ui/broadcast")
+
 async def admin_ui_broadcast(
+
     payload: AdminBroadcast,
+
     _: str = Depends(admin_ui_guard),
+
     session: AsyncSession = Depends(get_session),
+
 ):
+
     users = (await session.scalars(select(models.User))).all()
+
     for item in users:
+
         try:
+
             await bot.send_message(int(item.telegram_id), payload.message, reply_markup=webapp_keyboard())
+
         except Exception:
+
             continue
+
     return {"sent": len(users)}
 
 
+
+
+
 @app.post("/admin/ui/servers")
+
 async def admin_ui_servers(
+
     payload: AdminServer,
+
     _: str = Depends(admin_ui_guard),
+
     session: AsyncSession = Depends(get_session),
+
 ):
+
     server = models.Server(name=payload.name, endpoint=payload.endpoint, capacity=payload.capacity)
+
     session.add(server)
+
     await session.commit()
+
     return {"ok": True, "server_id": server.id}
 
 
+
+
+
 @app.get("/admin/ui/servers/list")
+
 async def admin_ui_servers_list(_: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)):
+
     servers = (await session.scalars(select(models.Server))).all()
+
     return {"servers": [{"id": s.id, "name": s.name, "endpoint": s.endpoint, "capacity": s.capacity} for s in servers]}
 
 
+
+
+
 @app.post("/admin/ui/servers/delete")
+
 async def admin_ui_servers_delete(
+
     payload: AdminServerDelete,
+
     _: str = Depends(admin_ui_guard),
+
     session: AsyncSession = Depends(get_session),
+
 ):
+
     server = await session.get(models.Server, payload.server_id)
+
+    if not server:
+
+        raise HTTPException(status_code=404, detail="Not found")
+
+    await session.delete(server)
+
+    await session.commit()
+
+    return {"ok": True}
+
+
+@app.post("/admin/ui/marzban/servers")
+async def admin_ui_marzban_servers(
+    payload: AdminMarzbanServer, _: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)
+):
+    server = models.MarzbanServer(
+        name=payload.name, api_url=payload.api_url, api_token=payload.api_token, capacity=payload.capacity
+    )
+    session.add(server)
+    await session.commit()
+    await session.refresh(server)
+    return MarzbanServerOut.model_validate(server)
+
+
+@app.get("/admin/ui/marzban/servers/list", response_model=list[MarzbanServerOut])
+async def admin_ui_marzban_servers_list(_: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)):
+    servers = (await session.scalars(select(models.MarzbanServer))).all()
+    return servers
+
+
+@app.post("/admin/ui/marzban/servers/delete")
+async def admin_ui_marzban_servers_delete(
+    payload: AdminMarzbanServerDelete, _: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)
+):
+    server = await session.get(models.MarzbanServer, payload.server_id)
     if not server:
         raise HTTPException(status_code=404, detail="Not found")
     await session.delete(server)
@@ -509,86 +1081,160 @@ async def admin_ui_servers_delete(
     return {"ok": True}
 
 
+
+
+
 @app.post("/admin/ui/servers/update")
+
 async def admin_ui_servers_update(
+
     payload: AdminServerUpdate,
+
     _: str = Depends(admin_ui_guard),
+
     session: AsyncSession = Depends(get_session),
+
 ):
+
     server = await session.get(models.Server, payload.server_id)
+
     if not server:
+
         raise HTTPException(status_code=404, detail="Not found")
+
     server.capacity = payload.capacity
+
     await session.commit()
+
     return {"ok": True, "capacity": server.capacity}
 
 
+
+
+
 @app.get("/admin/ui/price")
+
 async def admin_ui_price(_: str = Depends(admin_ui_guard)):
+
     return {"price": settings.price_30_days}
 
 
+
+
+
 @app.post("/admin/ui/price")
+
 async def admin_ui_set_price(payload: AdminPrice, _: str = Depends(admin_ui_guard)):
+
     settings.price_30_days = payload.price
+
     return {"ok": True, "price": settings.price_30_days}
 
 
+
+
+
 @app.post("/admin/ui/tariffs", response_model=TariffOut)
+
 async def admin_ui_tariffs(
+
     payload: AdminTariff,
+
     _: str = Depends(admin_ui_guard),
+
     session: AsyncSession = Depends(get_session),
+
 ):
+
     tariff = models.Tariff(name=payload.name, days=payload.days, price=payload.price, base_devices=payload.base_devices)
+
     session.add(tariff)
+
     await session.commit()
+
     await session.refresh(tariff)
+
     return tariff
 
 
+
+
+
 @app.post("/admin/ui/topup")
+
 async def admin_ui_topup(
+
     payload: AdminBalance,
+
     _: str = Depends(admin_ui_guard),
+
     session: AsyncSession = Depends(get_session),
+
 ):
+
     target = await session.scalar(find_user_query(payload.telegram_id, payload.username))
+
     if not target:
+
         raise HTTPException(status_code=404, detail="User not found")
+
     target.balance += payload.amount
+
     await session.commit()
+
     return {"ok": True, "balance": target.balance}
 
 
+
+
+
 @app.post("/admin/ui/ban")
+
 async def admin_ui_ban(
+
     payload: AdminBan,
+
     _: str = Depends(admin_ui_guard),
+
     session: AsyncSession = Depends(get_session),
+
 ):
+
     target = await session.scalar(find_user_query(payload.telegram_id, payload.username))
+
     if not target:
+
         raise HTTPException(status_code=404, detail="User not found")
+
     target.banned = payload.banned
+
     await session.commit()
+
     return {"ok": True, "banned": target.banned}
+
+
+
 
 
 @app.get("/{slug}")
 async def wireguard_profile(slug: str, session: AsyncSession = Depends(get_session)):
     user = await session.scalar(select(models.User).where(models.User.link_slug == slug))
     if not user:
-        raise HTTPException(status_code=404, detail="Не найдено")
-    if user.banned or user.link_suspended:
-        raise HTTPException(status_code=403, detail="Ссылка заблокирована")
-    if not user.subscription_end or user.subscription_end < now_utc():
-        raise HTTPException(status_code=403, detail="Подписка неактивна")
-    server = await session.get(models.Server, user.server_id) if user.server_id else None
+        raise HTTPException(status_code=404, detail="?? ???????")
+    if user.banned:
+        raise HTTPException(status_code=403, detail="??????? ????????????")
+    if user.link_suspended:
+        raise HTTPException(status_code=403, detail="???????? ??????????????")
+
+    marz_user = await session.scalar(select(models.MarzbanUser).where(models.MarzbanUser.user_id == user.id))
+    server = await session.get(models.MarzbanServer, marz_user.server_id) if marz_user and marz_user.server_id else None
+    link_value = marz_user.sub_url if marz_user else make_wireguard_link(user.link_slug)
+
     return {
-        "link": make_wireguard_link(user.link_slug),
-        "server_endpoint": server.endpoint if server else None,
+        "link": link_value,
+        "server_endpoint": server.api_url if server else None,
         "expires_at": user.subscription_end,
         "devices_allowed": user.allowed_devices,
-        "notice": "Импортируйте ссылку в VPN-клиенте с поддержкой WireGuard.",
+        "notice": "??????????? ?????? ? ?????????? 1VPN ??? ???????????.",
     }
+

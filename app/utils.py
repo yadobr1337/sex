@@ -41,6 +41,8 @@ def now_utc() -> dt.datetime:
 
 
 def make_wireguard_link(slug: str) -> str:
+    if slug.startswith("http://") or slug.startswith("https://"):
+        return slug
     return f"https://{settings.domain}/{slug}#1VPN"
 
 

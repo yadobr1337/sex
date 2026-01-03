@@ -88,3 +88,26 @@ class AdminCredential(Base):
     username: Mapped[str] = mapped_column(String(64), unique=True)
     password: Mapped[str] = mapped_column(String(128))
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=dt.datetime.utcnow)
+
+
+class MarzbanServer(Base):
+    __tablename__ = "marzban_servers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(64), unique=True)
+    api_url: Mapped[str] = mapped_column(String(256))
+    api_token: Mapped[str] = mapped_column(String(512))
+    capacity: Mapped[int] = mapped_column(Integer, default=10)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=dt.datetime.utcnow)
+
+
+class MarzbanUser(Base):
+    __tablename__ = "marzban_users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    server_id: Mapped[int] = mapped_column(ForeignKey("marzban_servers.id"))
+    username: Mapped[str] = mapped_column(String(64), unique=True)
+    sub_url: Mapped[str] = mapped_column(String(512))
+    expires_at: Mapped[Optional[dt.datetime]] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=dt.datetime.utcnow)

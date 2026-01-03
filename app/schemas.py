@@ -103,6 +103,25 @@ class AdminPrice(BaseModel):
     price: int
 
 
+class MarzbanServerOut(BaseModel):
+    id: int
+    name: str
+    api_url: str
+    capacity: int
+    model_config = {"from_attributes": True}
+
+
+class AdminMarzbanServer(BaseModel):
+    name: str
+    api_url: str
+    api_token: str
+    capacity: int = 10
+
+
+class AdminMarzbanServerDelete(BaseModel):
+    server_id: int
+
+
 class AdminLogin(BaseModel):
     username: str
     password: str
