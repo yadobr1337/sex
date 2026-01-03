@@ -257,17 +257,17 @@ async def marzban_upsert_client(
         "ips": max_devices,
     }
     async with aiohttp.ClientSession() as http:
-        create_url = f"{base}/api/admin/clients"
+        create_url = f"{base}/api/admin/user"
         async with http.post(create_url, json=payload, headers=headers) as resp:
             if resp.status not in (200, 201, 204, 409):
                 detail = await resp.text()
                 raise HTTPException(status_code=503, detail=f"Marzban create failed: {detail}")
-        update_url = f"{base}/api/admin/clients/{username}"
+        update_url = f"{base}/api/admin/user/{username}"
         async with http.put(update_url, json=payload, headers=headers) as resp:
             if resp.status not in (200, 201, 204):
                 detail = await resp.text()
                 raise HTTPException(status_code=503, detail=f"Marzban update failed: {detail}")
-        sub_url = f"{base}/api/admin/clients/{username}/subscription"
+        sub_url = f"{base}/api/user/{username}/subscription"
         async with http.get(sub_url, headers=headers) as resp:
             if resp.status in (200, 201):
                 try:
