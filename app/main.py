@@ -19,6 +19,7 @@ from .schemas import (
     AdminBan,
     AdminBroadcast,
     AdminServer,
+    AdminServerDelete,
     AdminTariff,
     AdminCredUpdate,
     AdminLogin,
