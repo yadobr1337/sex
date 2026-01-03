@@ -24,6 +24,7 @@ from .schemas import (
     AdminTariff,
     AdminCredUpdate,
     AdminLogin,
+    AdminPrice,
     DeviceRequest,
     PaymentRequest,
     SubscriptionRequest,
@@ -175,6 +176,9 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
         if server:
             user.server_id = server.id
             await session.commit()
+    if user.link_suspended and user.allowed_devices and len(devices) <= user.allowed_devices:
+        user.link_suspended = False
+        await session.commit()
     return UserState(
         balance=user.balance,
         subscription_end=user.subscription_end,
@@ -294,6 +298,20 @@ async def register_device(
     user.link_suspended = False
     await session.commit()
     return {"ok": True, "devices": count}
+
+
+@app.delete("/api/device/{device_id}")
+async def delete_device(
+    device_id: int,
+    user: models.User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    device = await session.get(models.Device, device_id)
+    if not device or device.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Device not found")
+    await session.delete(device)
+    await session.commit()
+    return {"ok": True}
 
 
 @app.post("/api/webhooks/yookassa")
@@ -503,6 +521,17 @@ async def admin_ui_servers_update(
     server.capacity = payload.capacity
     await session.commit()
     return {"ok": True, "capacity": server.capacity}
+
+
+@app.get("/admin/ui/price")
+async def admin_ui_price(_: str = Depends(admin_ui_guard)):
+    return {"price": settings.price_30_days}
+
+
+@app.post("/admin/ui/price")
+async def admin_ui_set_price(payload: AdminPrice, _: str = Depends(admin_ui_guard)):
+    settings.price_30_days = payload.price
+    return {"ok": True, "price": settings.price_30_days}
 
 
 @app.post("/admin/ui/tariffs", response_model=TariffOut)

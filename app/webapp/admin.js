@@ -27,9 +27,11 @@ async function api(path, body) {
 
 function showPanel() {
   el("panel").hidden = false;
-  el("login-block").hidden = true;
+  const lb = el("login-block");
+  if (lb) lb.remove();
   setStatus("Вы вошли в админку");
   loadServers();
+  loadPrice();
 }
 
 el("login-btn").onclick = async () => {
@@ -77,20 +79,6 @@ el("add-server").onclick = async () => {
     await api("/admin/ui/servers", { name, endpoint, capacity });
     setStatus("Сервер добавлен");
     await loadServers();
-  } catch (e) {
-    setStatus(e.message, false);
-  }
-};
-
-el("add-tariff").onclick = async () => {
-  const name = el("tariff-name").value.trim();
-  const days = parseInt(el("tariff-days").value, 10) || 0;
-  const price = parseInt(el("tariff-price").value, 10) || 0;
-  const base_devices = parseInt(el("tariff-devices").value, 10) || 1;
-  if (!name || !days || !price) return setStatus("Заполните все поля", false);
-  try {
-    await api("/admin/ui/tariffs", { name, days, price, base_devices });
-    setStatus("Тариф добавлен");
   } catch (e) {
     setStatus(e.message, false);
   }
@@ -192,6 +180,30 @@ el("admin-unban").onclick = async () => {
   try {
     await api("/admin/ui/ban", body);
     setStatus("Пользователь разбанен");
+  } catch (e) {
+    setStatus(e.message, false);
+  }
+};
+
+async function loadPrice() {
+  try {
+    const res = await fetch("/admin/ui/price", {
+      headers: { "Content-Type": "application/json", ...(token ? { "X-Admin-Token": token } : {}) },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    el("price-30").value = data.price;
+  } catch {
+    /* ignore */
+  }
+}
+
+el("save-price").onclick = async () => {
+  const price = parseInt(el("price-30").value, 10) || 0;
+  if (!price) return setStatus("Укажите цену", false);
+  try {
+    await api("/admin/ui/price", { price });
+    setStatus("Цена обновлена");
   } catch (e) {
     setStatus(e.message, false);
   }

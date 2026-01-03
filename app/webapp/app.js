@@ -40,7 +40,9 @@ function renderDevices(devices) {
         <div class="value">${d.label}</div>
         <div class="label">${d.fingerprint.slice(0, 8)} · ${new Date(d.last_seen).toLocaleDateString()}</div>
       </div>
+      <button class="ghost danger" data-id="${d.id}">Удалить</button>
     `;
+    item.querySelector("button").onclick = () => deleteDevice(d.id);
     list.appendChild(item);
   });
 }
@@ -73,6 +75,15 @@ async function topup() {
 async function addDevice() {
   try {
     await api("/api/device", { method: "POST", body: { fingerprint, label: "Мое устройство" } });
+    await loadState();
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function deleteDevice(id) {
+  try {
+    await api(`/api/device/${id}`, { method: "DELETE" });
     await loadState();
   } catch (e) {
     console.error(e);

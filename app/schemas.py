@@ -99,6 +99,10 @@ class AdminServerUpdate(BaseModel):
     capacity: int
 
 
+class AdminPrice(BaseModel):
+    price: int
+
+
 class AdminLogin(BaseModel):
     username: str
     password: str
