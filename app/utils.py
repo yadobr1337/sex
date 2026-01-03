@@ -23,7 +23,7 @@ def validate_telegram_webapp_data(init_data: str, bot_token: str) -> dict:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid initData")
 
     payload = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
-    secret_key = sha256(bot_token.encode()).digest()
+    secret_key = sha256(f"WebAppData{bot_token}".encode()).digest()
     calculated = hmac.new(secret_key, payload.encode(), sha256).hexdigest()
 
     if not hmac.compare_digest(calculated, hash_value):
