@@ -289,15 +289,10 @@ async def register_device(
         existing.last_seen = now_utc()
         await session.commit()
     count = await session.scalar(select(func.count(models.Device.id)).where(models.Device.user_id == user.id))
-    if count and count > user.allowed_devices:
-        user.link_suspended = True
-        await session.commit()
-        await bot.send_message(
-            int(user.telegram_id),
-            "Обнаружено новое устройство. Оплатите дополнительный слот, чтобы продолжить пользоваться VPN.",
-            reply_markup=webapp_keyboard(),
-        )
-        raise HTTPException(status_code=403, detail="Слишком много устройств. Купите еще слот.")
+    if count and count > (user.allowed_devices or 1):
+        user.allowed_devices = count
+    user.link_suspended = False
+    await session.commit()
     return {"ok": True, "devices": count}
 
 
