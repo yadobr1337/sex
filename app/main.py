@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from . import models
 from .bot import bot, dp, webapp_keyboard
 from .config import settings
-from .database import Base, engine, get_session
+from .database import Base, engine, get_session, AsyncSessionLocal
 from .schemas import (
     AdminBalance,
     AdminBan,
