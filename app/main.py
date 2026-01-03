@@ -134,10 +134,11 @@ async def index():
 @app.post("/api/init")
 async def init_user(
     request: Request,
+    x_init: str | None = Header(None, alias="X-Telegram-Init"),
     session: AsyncSession = Depends(get_session),
 ):
     data = await request.json()
-    init_data = data.get("initData")
+    init_data = data.get("initData") or x_init
     if not init_data:
         raise HTTPException(status_code=400, detail="initData required")
     user = await get_or_create_user(init_data, session)

@@ -7,3 +7,11 @@ C:\Users\RR\Pictures\111111111111111111111111111111\.venv\Lib\site-packages\pyda
 INFO:     Started server process [15336]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
+Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8010329996)
+Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+Sleep for 1.294812 seconds and try again... (tryings = 1, bot id = 8010329996)
+Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8010329996)
+Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+Sleep for 1.386129 seconds and try again... (tryings = 1, bot id = 8010329996)
