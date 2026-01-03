@@ -170,6 +170,11 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
     tariffs = (await session.scalars(select(models.Tariff))).all()
     devices = (await session.scalars(select(models.Device).where(models.Device.user_id == user.id))).all()
     server = await session.get(models.Server, user.server_id) if user.server_id else None
+    if not server:
+        server = await pick_available_server(session, user.id)
+        if server:
+            user.server_id = server.id
+            await session.commit()
     return UserState(
         balance=user.balance,
         subscription_end=user.subscription_end,

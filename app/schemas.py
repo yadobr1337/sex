@@ -9,9 +9,7 @@ class DeviceOut(BaseModel):
     fingerprint: str
     label: str
     last_seen: dt.datetime
-
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 
 class ServerOut(BaseModel):
@@ -19,9 +17,7 @@ class ServerOut(BaseModel):
     name: str
     endpoint: str
     capacity: int
-
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 
 class TariffOut(BaseModel):
@@ -30,9 +26,7 @@ class TariffOut(BaseModel):
     days: int
     price: int
     base_devices: int
-
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 
 class UserState(BaseModel):
