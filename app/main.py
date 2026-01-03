@@ -364,7 +364,7 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
     devices = (await session.scalars(select(models.Device).where(models.Device.user_id == user.id))).all()
 
     device_count = len(devices) or 1
-    price_per_day_per_device = (settings.price_30_days / 30) * device_count if settings.price_30_days else 0
+    price_per_day_per_device = settings.price_per_day * device_count if settings.price_per_day else 0
     estimated_days = int(user.balance / price_per_day_per_device) if price_per_day_per_device else 0
 
     server: Optional[models.MarzbanServer] = None
@@ -418,7 +418,7 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
         android_help_url=settings.android_help_url,
         support_url=f"https://t.me/{settings.support_username}",
         is_admin=settings.admin_tg_id == str(user.telegram_id),
-        price_30_days=settings.price_30_days,
+        price_per_day=settings.price_per_day,
         estimated_days=estimated_days,
     )
 
@@ -1116,7 +1116,7 @@ async def admin_ui_servers_update(
 
 async def admin_ui_price(_: str = Depends(admin_ui_guard)):
 
-    return {"price": settings.price_30_days}
+    return {"price": settings.price_per_day}
 
 
 
@@ -1126,9 +1126,9 @@ async def admin_ui_price(_: str = Depends(admin_ui_guard)):
 
 async def admin_ui_set_price(payload: AdminPrice, _: str = Depends(admin_ui_guard)):
 
-    settings.price_30_days = payload.price
+    settings.price_per_day = payload.price
 
-    return {"ok": True, "price": settings.price_30_days}
+    return {"ok": True, "price": settings.price_per_day}
 
 
 
