@@ -289,17 +289,6 @@ async def get_or_create_user(init_data: str, session: AsyncSession) -> models.Us
     if user:
 
         return user
-
-
-
-    server = await pick_available_server(session)
-
-    if not server:
-
-        raise HTTPException(status_code=503, detail="Нет свободных серверов. Напишите в поддержку.")
-
-
-
     user = models.User(
 
         telegram_id=tg_id,
