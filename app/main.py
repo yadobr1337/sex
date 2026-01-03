@@ -430,12 +430,21 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
 
     await session.commit()
 
+    server_data = None
+    if server:
+        server_data = {
+            "id": getattr(server, "id", None),
+            "name": getattr(server, "name", None),
+            "endpoint": getattr(server, "api_url", None),
+            "capacity": getattr(server, "capacity", None),
+        }
+
     return UserState(
         balance=user.balance,
         subscription_end=user.subscription_end,
         allowed_devices=user.allowed_devices,
         link=link_value,
-        server=server,
+        server=server_data,
         devices=devices,
         tariffs=tariffs,
         banned=user.banned,
