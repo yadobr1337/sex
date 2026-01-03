@@ -20,6 +20,7 @@ from .schemas import (
     AdminBroadcast,
     AdminServer,
     AdminServerDelete,
+    AdminServerUpdate,
     AdminTariff,
     AdminCredUpdate,
     AdminLogin,
@@ -488,6 +489,20 @@ async def admin_ui_servers_delete(
     await session.delete(server)
     await session.commit()
     return {"ok": True}
+
+
+@app.post("/admin/ui/servers/update")
+async def admin_ui_servers_update(
+    payload: AdminServerUpdate,
+    _: str = Depends(admin_ui_guard),
+    session: AsyncSession = Depends(get_session),
+):
+    server = await session.get(models.Server, payload.server_id)
+    if not server:
+        raise HTTPException(status_code=404, detail="Not found")
+    server.capacity = payload.capacity
+    await session.commit()
+    return {"ok": True, "capacity": server.capacity}
 
 
 @app.post("/admin/ui/tariffs", response_model=TariffOut)

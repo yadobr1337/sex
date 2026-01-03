@@ -29,6 +29,7 @@ function showPanel() {
   el("panel").hidden = false;
   el("login-block").hidden = true;
   setStatus("Вы вошли в админку");
+  loadServers();
 }
 
 el("login-btn").onclick = async () => {
@@ -109,7 +110,29 @@ async function loadServers() {
       const row = document.createElement("div");
       row.className = "server-item";
       row.innerHTML = `<div><div class="value">${s.name}</div><div class="label">${s.endpoint}</div></div>`;
+
       const actions = document.createElement("div");
+      const capInput = document.createElement("input");
+      capInput.type = "number";
+      capInput.min = "0";
+      capInput.value = s.capacity;
+      capInput.style.width = "70px";
+      capInput.className = "ghost";
+
+      const upd = document.createElement("button");
+      upd.className = "ghost";
+      upd.textContent = "Обновить";
+      upd.onclick = async () => {
+        const capacity = parseInt(capInput.value, 10) || 0;
+        try {
+          await api("/admin/ui/servers/update", { server_id: s.id, capacity });
+          setStatus("Сервер обновлён");
+          await loadServers();
+        } catch (e) {
+          setStatus(e.message, false);
+        }
+      };
+
       const del = document.createElement("button");
       del.className = "ghost danger";
       del.textContent = "Удалить";
@@ -122,7 +145,7 @@ async function loadServers() {
           setStatus(e.message, false);
         }
       };
-      actions.appendChild(del);
+      actions.append(capInput, upd, del);
       row.appendChild(actions);
       list.appendChild(row);
     });

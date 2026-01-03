@@ -100,6 +100,11 @@ class AdminServerDelete(BaseModel):
     server_id: int
 
 
+class AdminServerUpdate(BaseModel):
+    server_id: int
+    capacity: int
+
+
 class AdminLogin(BaseModel):
     username: str
     password: str
