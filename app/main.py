@@ -423,7 +423,7 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
     )
 
 
-@app.post("/api/topup"@app.post("/api/topup")
+@app.post("/api/topup")
 
 async def create_topup(
 
