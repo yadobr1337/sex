@@ -49,6 +49,27 @@ from .schemas import (
 from .utils import create_admin_ui_token, make_wireguard_link, new_slug, now_utc, validate_telegram_webapp_data, verify_admin_ui_token
 
 
+async def get_price(session: AsyncSession) -> float:
+    setting = await session.get(models.AppSetting, "price_per_day")
+    if setting:
+        try:
+            return float(setting.value)
+        except ValueError:
+            return settings.price_per_day
+    # если нет записи — вернуть значение из env, но не создавать принудительно
+    return settings.price_per_day
+
+
+async def set_price(session: AsyncSession, value: float) -> float:
+    setting = await session.get(models.AppSetting, "price_per_day")
+    if setting:
+        setting.value = str(value)
+    else:
+        session.add(models.AppSetting(key="price_per_day", value=str(value)))
+    await session.commit()
+    return value
+
+
 
 app = FastAPI(title="1VPN")
 
@@ -364,7 +385,8 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
     devices = (await session.scalars(select(models.Device).where(models.Device.user_id == user.id))).all()
 
     device_count = len(devices) or 1
-    price_per_day_per_device = settings.price_per_day * device_count if settings.price_per_day else 0
+    price_value = await get_price(session)
+    price_per_day_per_device = price_value * device_count if price_value else 0
     estimated_days = int(user.balance / price_per_day_per_device) if price_per_day_per_device else 0
 
     server: Optional[models.MarzbanServer] = None
@@ -418,7 +440,7 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
         android_help_url=settings.android_help_url,
         support_url=f"https://t.me/{settings.support_username}",
         is_admin=settings.admin_tg_id == str(user.telegram_id),
-        price_per_day=settings.price_per_day,
+        price_per_day=price_value,
         estimated_days=estimated_days,
     )
 
@@ -1114,9 +1136,9 @@ async def admin_ui_servers_update(
 
 @app.get("/admin/ui/price")
 
-async def admin_ui_price(_: str = Depends(admin_ui_guard)):
+async def admin_ui_price(_: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)):
 
-    return {"price": settings.price_per_day}
+    return {"price": await get_price(session)}
 
 
 
@@ -1124,11 +1146,11 @@ async def admin_ui_price(_: str = Depends(admin_ui_guard)):
 
 @app.post("/admin/ui/price")
 
-async def admin_ui_set_price(payload: AdminPrice, _: str = Depends(admin_ui_guard)):
+async def admin_ui_set_price(payload: AdminPrice, _: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)):
 
-    settings.price_per_day = payload.price
+    await set_price(session, payload.price)
 
-    return {"ok": True, "price": settings.price_per_day}
+    return {"ok": True, "price": await get_price(session)}
 
 
 
