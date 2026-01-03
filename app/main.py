@@ -417,8 +417,6 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
                     )
                     session.add(marz_user)
                     link_value = sub_url
-                else:
-                    user.link_suspended = True
             else:
                 server = await session.get(models.MarzbanServer, marz_user.server_id) if marz_user.server_id else None
                 if not server:
