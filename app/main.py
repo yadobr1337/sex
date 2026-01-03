@@ -386,6 +386,8 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
     price_value = await get_price(session)
     price_per_day_per_device = price_value * device_count if price_value else 0
     estimated_days = int(user.balance / price_per_day_per_device) if price_per_day_per_device else 0
+    # защита от переполнения timedelta при больших балансах
+    estimated_days = min(estimated_days, 3650)  # максимум ~10 лет
 
     server: Optional[models.MarzbanServer] = None
     marz_user = await session.scalar(select(models.MarzbanUser).where(models.MarzbanUser.user_id == user.id))
