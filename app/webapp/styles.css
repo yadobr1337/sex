@@ -1,14 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&display=swap');
 
 :root {
-  --bg: #080808;
-  --card: rgba(255, 255, 255, 0.04);
-  --text: #f5f7ff;
-  --muted: #a6addf;
-  --primary: #3500d3;
-  --primary-dark: #240090;
-  --accent: #190061;
-  --accent-bright: #5a54ff;
+  --bg: #050505;
+  --card: rgba(255, 255, 255, 0.03);
+  --text: #f2f4ff;
+  --muted: #9aa2d3;
+  --primary: #2b1c73;
+  --primary-dark: #1b0e4f;
+  --accent: #120a3a;
+  --accent-bright: #4a3fb0;
 }
 
 * {
@@ -35,9 +35,9 @@ body {
   position: fixed;
   inset: 0;
   background: radial-gradient(circle at 20% 20%, rgba(53, 0, 211, 0.28), transparent 35%),
-    radial-gradient(circle at 80% 0%, rgba(36, 0, 144, 0.18), transparent 35%),
-    radial-gradient(circle at 60% 80%, rgba(25, 0, 97, 0.18), transparent 35%),
-    linear-gradient(145deg, #080808, #0c0032 55%, #080808);
+    radial-gradient(circle at 80% 0%, rgba(36, 0, 144, 0.12), transparent 35%),
+    radial-gradient(circle at 60% 80%, rgba(25, 0, 97, 0.12), transparent 35%),
+    linear-gradient(145deg, #050505, #0b0722 55%, #050505);
   filter: blur(0px);
   z-index: -1;
 }
@@ -67,7 +67,7 @@ body {
   width: 160px;
   height: 160px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(53, 0, 211, 0.4), rgba(36, 0, 144, 0.08));
+  background: radial-gradient(circle, rgba(53, 0, 211, 0.25), rgba(36, 0, 144, 0.05));
   animation: pulse 3s infinite;
   filter: blur(6px);
 }
@@ -102,7 +102,7 @@ body {
 
 .card {
   background: var(--card);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(12px);
   border-radius: 16px;
   padding: 16px;
@@ -148,20 +148,20 @@ body {
 
 .primary {
   background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-  box-shadow: 0 10px 30px rgba(53, 0, 211, 0.35);
+  box-shadow: 0 10px 24px rgba(43, 28, 115, 0.3);
 }
 
 .accent {
   width: 100%;
   background: linear-gradient(135deg, var(--accent-bright), var(--primary));
   color: #fff;
-  box-shadow: 0 10px 30px rgba(90, 84, 255, 0.35);
+  box-shadow: 0 10px 24px rgba(74, 63, 176, 0.25);
 }
 
 .ghost {
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .primary:active, .accent:active, .ghost:active {
