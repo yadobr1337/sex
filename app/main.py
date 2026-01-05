@@ -146,6 +146,8 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
     cost = price_value * device_count if price_value else 0
     link_value = ""
     estimated_days = 0
+    rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == user.id))
+    panel_uuid_current = rem_user.panel_uuid if rem_user else ""
 
     if cost > 0:
         estimated_days = int(user.balance / cost)
@@ -157,7 +159,7 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
         expires_at = now_utc()
         try:
             panel_uuid, _, _ = await rem_upsert_user(session, user, device_count, expires_at)
-            await rem_disable_user(panel_uuid)
+            await rem_disable_user(panel_uuid or panel_uuid_current)
         except Exception:
             pass
     else:
@@ -167,9 +169,11 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
         user.link_suspended = False
         try:
             panel_uuid, _, sub_url = await rem_upsert_user(session, user, device_count, expires_at)
-            await rem_enable_user(panel_uuid)
+            await rem_enable_user(panel_uuid or panel_uuid_current)
             if sub_url:
                 link_value = sub_url
+            elif rem_user and rem_user.subscription_url:
+                link_value = rem_user.subscription_url
         except Exception:
             user.link_suspended = True
             link_value = ""
