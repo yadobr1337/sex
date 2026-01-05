@@ -97,6 +97,16 @@ async def pick_rem_squad(session: AsyncSession) -> Optional[models.RemSquad]:
     return None
 
 
+async def check_subscription(user: models.User) -> bool:
+    if not settings.required_channel:
+        return True
+    try:
+        member = await bot.get_chat_member(settings.required_channel, int(user.telegram_id))
+        return member.status in {"member", "administrator", "creator"}
+    except Exception:
+        return False
+
+
 async def rem_register_hwid(session: AsyncSession, user: models.User, device: models.Device) -> None:
     base_url, base_api, token = get_rem_config()
     rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == user.id))
@@ -561,8 +571,20 @@ async def init_user(
 
 
 
+@app.get("/api/gate")
+async def gate(user: models.User = Depends(get_current_user)):
+    subscribed = await check_subscription(user)
+    return {
+        "subscribed": subscribed,
+        "required_channel": settings.required_channel,
+        "policy_url": settings.policy_url,
+    }
+
+
 @app.get("/api/state", response_model=UserState)
 async def state(user: models.User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+    if not await check_subscription(user):
+        raise HTTPException(status_code=403, detail="subscribe_required")
     tariffs = []
     devices = (
         await session.scalars(

@@ -250,6 +250,47 @@ body {
   border: 1px solid rgba(255, 59, 48, 0.3);
 }
 
+/* Gate overlay */
+.gate {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.gate.hidden {
+  display: none;
+}
+.gate-card {
+  width: 90%;
+  max-width: 420px;
+  background: #0d0d0f;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+.gate-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.gate-body {
+  font-size: 15px;
+  color: #cfd2d8;
+  margin-bottom: 16px;
+}
+.gate-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.gate-actions button {
+  flex: 1 1 auto;
+}
+
 .helpers {
   display: flex;
   flex-wrap: wrap;

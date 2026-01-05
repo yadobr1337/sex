@@ -1,11 +1,12 @@
 const tg = window.Telegram?.WebApp;
 if (tg) tg.ready();
 
-const initData = tg?.initData || localStorage.getItem("initData") || "";
+let initData = tg?.initData || localStorage.getItem("initData") || "";
 let state = null;
+let policyAccepted = localStorage.getItem("policyAccepted") === "1";
+let stateTimer = null;
 
 const el = (id) => document.getElementById(id);
-let stateTimer = null;
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
@@ -22,6 +23,28 @@ async function api(path, options = {}) {
     throw new Error(data.detail || res.statusText);
   }
   return res.json();
+}
+
+function showGate(message, actions = []) {
+  const gate = el("gate");
+  const msg = el("gate-message");
+  const actionsBox = el("gate-actions");
+  if (!gate || !msg || !actionsBox) return;
+  msg.innerText = message;
+  actionsBox.innerHTML = "";
+  actions.forEach((a) => {
+    const btn = document.createElement("button");
+    btn.className = a.className || "primary";
+    btn.textContent = a.text;
+    btn.onclick = a.onClick;
+    actionsBox.appendChild(btn);
+  });
+  gate.classList.remove("hidden");
+}
+
+function hideGate() {
+  const gate = el("gate");
+  if (gate) gate.classList.add("hidden");
 }
 
 function renderDevices(devices) {
@@ -49,8 +72,8 @@ function renderDevices(devices) {
 
 async function loadState() {
   state = await api("/api/state");
-  el("balance").innerText = `${state.balance} руб`;
-  el("days").innerText = `~${state.estimated_days} дн`;
+  el("balance").innerText = `${state.balance} ₽`;
+  el("days").innerText = `~${state.estimated_days} д`;
   el("devices-allowed").innerText = state.allowed_devices || 1;
   renderDevices(state.devices);
   el("wg-link").innerText = state.link || "—";
@@ -62,6 +85,7 @@ async function loadState() {
   el("support-link").href = state.support_url;
   if (tg?.initData) {
     localStorage.setItem("initData", tg.initData);
+    initData = tg.initData;
   }
   const openAdmin = document.getElementById("open-admin");
   if (openAdmin) openAdmin.hidden = !state.is_admin;
@@ -81,7 +105,7 @@ async function addDevice() {
     await loadState();
   } catch (e) {
     console.error(e);
-    if (tg) tg.showPopup({ message: e.message || "Не удалось добавить устройство" });
+    if (tg) tg.showPopup({ message: e.message || "Ошибка при добавлении устройства" });
   }
 }
 
@@ -111,12 +135,70 @@ el("copy-link").onclick = copyLink;
 const connectBtnInit = el("connect-btn");
 if (connectBtnInit) connectBtnInit.onclick = openLink;
 
-api("/api/init", { method: "POST", body: { initData } })
-  .then(loadState)
-  .then(() => {
-    if (stateTimer) clearInterval(stateTimer);
-    stateTimer = setInterval(() => {
-      loadState().catch(() => {});
-    }, 10000);
-  })
-  .catch((e) => console.error(e));
+async function runGate() {
+  await api("/api/init", { method: "POST", body: { initData } });
+  const gate = await api("/api/gate");
+
+  if (!gate.subscribed) {
+    showGate("Подпишитесь на наш канал, чтобы продолжить.", [
+      {
+        text: "Подписаться",
+        onClick: () => {
+          if (gate.required_channel) {
+            window.open(`https://t.me/${gate.required_channel.replace("@", "")}`, "_blank");
+          }
+        },
+      },
+      {
+        text: "Проверить",
+        className: "ghost",
+        onClick: () => runGate().catch(() => {}),
+      },
+    ]);
+    return;
+  }
+
+  if (!policyAccepted) {
+    showGate("Согласитесь с политикой конфиденциальности, чтобы открыть 1VPN.", [
+      gate.policy_url
+        ? {
+            text: "Политика",
+            className: "ghost",
+            onClick: () => window.open(gate.policy_url, "_blank"),
+          }
+        : null,
+      {
+        text: "Согласен",
+        onClick: () => {
+          policyAccepted = true;
+          localStorage.setItem("policyAccepted", "1");
+          hideGate();
+          loadState().catch(() => {});
+        },
+      },
+    ].filter(Boolean));
+    return;
+  }
+
+  hideGate();
+  try {
+    await loadState();
+  } catch (e) {
+    if (e.message === "subscribe_required") {
+      policyAccepted = localStorage.getItem("policyAccepted") === "1";
+      return runGate();
+    }
+    throw e;
+  }
+  if (stateTimer) clearInterval(stateTimer);
+  stateTimer = setInterval(() => {
+    loadState().catch((err) => {
+      if (err.message === "subscribe_required") {
+        policyAccepted = localStorage.getItem("policyAccepted") === "1";
+        runGate().catch(() => {});
+      }
+    });
+  }, 10000);
+}
+
+runGate().catch((e) => console.error(e));
