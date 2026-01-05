@@ -1,4 +1,4 @@
-﻿const tg = window.Telegram?.WebApp;
+const tg = window.Telegram?.WebApp;
 if (tg) tg.ready();
 
 const initData = tg?.initData || localStorage.getItem("initData") || "";
@@ -49,12 +49,13 @@ function renderDevices(devices) {
 
 async function loadState() {
   state = await api("/api/state");
-  el("balance").innerText = `${state.balance} ₽`;
+  el("balance").innerText = `${state.balance} руб`;
   el("days").innerText = `~${state.estimated_days} дн`;
-  el("devices-allowed").innerText = state.allowed_devices;
+  el("devices-allowed").innerText = state.allowed_devices || 1;
   renderDevices(state.devices);
-  el("wg-link").innerText = state.link;
-  el("server-name").innerText = state.server ? `Сервер: ${state.server.name}` : "Сервер: —";
+  el("wg-link").innerText = state.link || "—";
+  const connectBtn = el("connect-btn");
+  if (connectBtn) connectBtn.disabled = !state.link || state.link_suspended;
   el("suspended-banner").hidden = !state.link_suspended;
   el("ios-help").href = state.ios_help_url;
   el("android-help").href = state.android_help_url;
@@ -96,9 +97,16 @@ function copyLink() {
   });
 }
 
+function openLink() {
+  if (!state?.link) return;
+  window.location.href = state.link;
+}
+
 el("topup-btn").onclick = topup;
 el("add-device").onclick = addDevice;
 el("copy-link").onclick = copyLink;
+const connectBtnInit = el("connect-btn");
+if (connectBtnInit) connectBtnInit.onclick = openLink;
 
 api("/api/init", { method: "POST", body: { initData } })
   .then(loadState)

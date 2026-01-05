@@ -16,13 +16,13 @@
         <div class="pulse-circle delayed"></div>
       </div>
       <div class="logo">1VPN</div>
-      <div class="tagline">Безопасный доступ за пару тапов</div>
+      <div class="tagline">Безопасный VPN в один клик</div>
     </header>
 
     <section class="card stats">
       <div>
         <div class="label">Баланс</div>
-        <div class="value" id="balance">0 ₽</div>
+        <div class="value" id="balance">0 руб</div>
       </div>
       <div>
         <div class="label">Примерно дней</div>
@@ -32,63 +32,25 @@
     </section>
 
     <section class="card">
-      <div class="section-title">Моя ссылка</div>
+      <div class="section-title">Твоя ссылка</div>
       <div class="link-row">
         <div class="link" id="wg-link">—</div>
-        <button class="ghost" id="copy-link">Копировать</button>
+        <button class="ghost" id="copy-link">Скопировать</button>
       </div>
-      <div class="label" id="server-name">Сервер: —</div>
+      <button class="primary" id="connect-btn">Подключиться</button>
+      <div class="alert" id="suspended-banner" hidden>Подписка приостановлена — пополните баланс.</div>
     </section>
 
     <section class="card">
       <div class="section-title">Устройства</div>
       <div id="device-list" class="device-list"></div>
       <button class="primary add-device-btn" id="add-device">Добавить устройство</button>
-      <div class="label">Устройства в подписке: <span class="value" id="devices-allowed">1</span></div>
-      <div class="alert" id="suspended-banner" hidden>Подписка приостановлена — добавьте слот или сократите устройства.</div>
-    </section>
-
-    <section class="card admin" id="admin-panel" hidden>
-      <div class="section-title">Админ-панель</div>
-      <button class="ghost" id="close-admin">Закрыть</button>
-      <div class="admin-block">
-        <div class="label">Рассылка</div>
-        <textarea id="broadcast-text" rows="3" placeholder="Текст сообщения"></textarea>
-        <button class="accent" id="broadcast-btn">Отправить</button>
-      </div>
-
-      <div class="admin-block">
-        <div class="label">Добавить сервер</div>
-        <input id="server-name" placeholder="Имя сервера" />
-        <input id="server-endpoint" placeholder="endpoint:port" />
-        <input id="server-capacity" type="number" min="1" value="10" placeholder="Вместимость" />
-        <button class="accent" id="add-server">Добавить сервер</button>
-      </div>
-
-      <div class="admin-block">
-        <div class="label">Добавить тариф</div>
-        <input id="tariff-name" placeholder="Название" />
-        <input id="tariff-days" type="number" min="1" value="30" placeholder="Дней" />
-        <input id="tariff-price" type="number" min="1" value="300" placeholder="Цена ₽" />
-        <input id="tariff-devices" type="number" min="1" value="1" placeholder="Устройств" />
-        <button class="accent" id="add-tariff">Добавить тариф</button>
-      </div>
-
-      <div class="admin-block">
-        <div class="label">Пополнить / бан</div>
-        <input id="admin-user-id" placeholder="telegram_id или username" />
-        <input id="admin-amount" type="number" placeholder="Сумма пополнения" />
-        <div class="admin-actions">
-          <button class="ghost" id="admin-topup">Пополнить</button>
-          <button class="ghost danger" id="admin-ban">Забанить</button>
-          <button class="ghost" id="admin-unban">Разбанить</button>
-        </div>
-      </div>
+      <div class="label">Устройств доступно: <span class="value" id="devices-allowed">1</span></div>
     </section>
 
     <section class="card helpers">
-      <a class="ghost" id="ios-help" target="_blank">iOS инструкция</a>
-      <a class="ghost" id="android-help" target="_blank">Android инструкция</a>
+      <a class="ghost" id="ios-help" target="_blank">iOS установка</a>
+      <a class="ghost" id="android-help" target="_blank">Android установка</a>
       <a class="ghost" id="support-link" target="_blank">Поддержка</a>
     </section>
   </main>

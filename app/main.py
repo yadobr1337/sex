@@ -171,6 +171,56 @@ async def rem_upsert_user(
         return panel_uuid or "", short_uuid, sub_url
 
 
+async def bill_users_once() -> None:
+    async with AsyncSessionLocal() as session:
+        today = now_utc().date().isoformat()
+        last = await session.get(models.AppSetting, "last_billed_date")
+        if last and last.value == today:
+            return
+
+        price_value = await get_price(session)
+        users = (await session.scalars(select(models.User))).all()
+        for user in users:
+            device_count = await session.scalar(
+                select(func.count(models.Device.id)).where(models.Device.user_id == user.id)
+            ) or 1
+            cost = price_value * max(device_count, 1)
+            if cost <= 0:
+                continue
+            if user.balance >= cost:
+                user.balance -= cost
+                days_left = int(user.balance / cost) + 1
+                expires_at = now_utc() + timedelta(days=days_left)
+                user.subscription_end = expires_at
+                user.allowed_devices = device_count
+                user.link_suspended = False
+                try:
+                    await rem_upsert_user(session, user, device_count, expires_at)
+                except Exception:
+                    user.link_suspended = True
+            else:
+                user.link_suspended = True
+                user.subscription_end = None
+                try:
+                    await rem_upsert_user(session, user, device_count, now_utc())
+                except Exception:
+                    pass
+
+        if last:
+            last.value = today
+        else:
+            session.add(models.AppSetting(key="last_billed_date", value=today))
+        await session.commit()
+
+
+async def billing_loop():
+    while True:
+        try:
+            await bill_users_once()
+        except Exception:
+            pass
+        await asyncio.sleep(24 * 3600)
+
 
 app = FastAPI(title="1VPN")
 
@@ -225,6 +275,7 @@ async def startup():
             await session.commit()
 
     asyncio.create_task(start_bot_polling())
+    asyncio.create_task(billing_loop())
 
 
 
