@@ -40,11 +40,13 @@ function showGate(message, actions = []) {
     actionsBox.appendChild(btn);
   });
   gate.classList.remove("hidden");
+  document.body.classList.add("gate-open");
 }
 
 function hideGate() {
   const gate = el("gate");
   if (gate) gate.classList.add("hidden");
+  document.body.classList.remove("gate-open");
 }
 
 function renderDevices(devices) {
@@ -136,8 +138,24 @@ const connectBtnInit = el("connect-btn");
 if (connectBtnInit) connectBtnInit.onclick = openLink;
 
 async function runGate() {
-  await api("/api/init", { method: "POST", body: { initData } });
-  const gate = await api("/api/gate");
+  try {
+    await api("/api/init", { method: "POST", body: { initData } });
+  } catch (e) {
+    showGate("Не удалось инициализировать сеанс. Попробуйте ещё раз.", [
+      { text: "Повторить", onClick: () => runGate().catch(() => {}) },
+    ]);
+    return;
+  }
+
+  let gate;
+  try {
+    gate = await api("/api/gate");
+  } catch (e) {
+    showGate("Не удалось проверить подписку. Повторите попытку.", [
+      { text: "Повторить", onClick: () => runGate().catch(() => {}) },
+    ]);
+    return;
+  }
 
   if (!gate.subscribed) {
     showGate("Подпишитесь на наш канал, чтобы продолжить.", [
