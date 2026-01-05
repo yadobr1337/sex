@@ -1,6 +1,7 @@
 let token = localStorage.getItem("admin_ui_token") || "";
 const el = (id) => document.getElementById(id);
 const statusLine = () => el("status-line");
+let statusTimer = null;
 
 function setStatus(msg, ok = true) {
   const s = statusLine();
@@ -27,6 +28,7 @@ function showPanel() {
   const lb = el("login-block");
   if (lb) lb.remove();
   setStatus("Вы вошли в админку");
+  startStatusPoll();
   loadRemSquads();
   loadPrice();
 }
@@ -105,15 +107,41 @@ el("add-rem").onclick = async () => {
   const name = el("rem-name").value.trim();
   const uuid = el("rem-uuid").value.trim();
   const capacity = parseInt(el("rem-capacity").value, 10) || 50;
-  if (!name || !uuid) return setStatus("????? ???????? ? UUID ??????", false);
+  if (!name || !uuid) return setStatus("Укажи название и UUID сквада", false);
   try {
     await api("/admin/ui/rem/squads", { name, uuid, capacity });
-    setStatus("????? ????????");
+    setStatus("Сквад добавлен");
     await loadRemSquads();
   } catch (e) {
     setStatus(e.message, false);
   }
 };
+
+async function refreshRemStatus() {
+  const s = el("rem-status");
+  if (!s) return;
+  s.hidden = false;
+  s.classList.remove("status-ok", "status-bad");
+  s.textContent = "Проверка панели...";
+  try {
+    const res = await fetch("/admin/ui/rem/status", {
+      headers: { ...(token ? { "X-Admin-Token": token } : {}) },
+    });
+    const data = await res.json();
+    const ok = !!data.ok;
+    s.classList.add(ok ? "status-ok" : "status-bad");
+    s.textContent = ok ? "Панель подключена" : `Нет связи: ${data.detail || data.status || res.status}`;
+  } catch (e) {
+    s.classList.add("status-bad");
+    s.textContent = `Нет связи: ${e.message}`;
+  }
+}
+
+function startStatusPoll() {
+  refreshRemStatus();
+  if (statusTimer) clearInterval(statusTimer);
+  statusTimer = setInterval(refreshRemStatus, 10000);
+}
 
 const userField = el("admin-user-id");
 

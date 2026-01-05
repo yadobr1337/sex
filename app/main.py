@@ -439,7 +439,7 @@ async def init_user(
 
     user = await get_or_create_user(init_data, session)
 
-    return {"ok": True, "link": make_wireguard_link(user.link_slug)}
+    return {"ok": True, "link": ""}
 
 
 
@@ -456,7 +456,7 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
     estimated_days = int(user.balance / price_per_day_per_device) if price_per_day_per_device else 0
     estimated_days = min(estimated_days, 3650)
 
-    link_value = make_wireguard_link(user.link_slug)
+    link_value = ""
     server_data: Optional[dict] = None
 
     if estimated_days <= 0:
@@ -1123,6 +1123,24 @@ async def admin_ui_servers_delete(
     return {"ok": True}
 
 
+@app.get("/admin/ui/rem/status")
+async def admin_ui_rem_status(_: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)):
+    base_url, token = get_rem_config()
+    url = f"{base_url}/api/system/health"
+    headers = {"Authorization": f"Bearer {token}"}
+    try:
+        async with aiohttp.ClientSession() as http:
+            async with http.get(url, headers=headers) as resp:
+                ok = resp.status == 200
+                try:
+                    data = await resp.json()
+                    detail = data if isinstance(data, str) else data.get("status") or str(data)
+                except Exception:
+                    detail = await resp.text()
+                return {"ok": ok, "detail": detail, "status": resp.status}
+    except Exception as e:
+        return {"ok": False, "detail": str(e)}
+
 @app.post("/admin/ui/marzban/servers")
 async def admin_ui_marzban_servers(
     payload: AdminMarzbanServer, _: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)
@@ -1320,23 +1338,5 @@ async def admin_ui_ban(
 
 @app.get("/{slug}")
 async def wireguard_profile(slug: str, session: AsyncSession = Depends(get_session)):
-    user = await session.scalar(select(models.User).where(models.User.link_slug == slug))
-    if not user:
-        raise HTTPException(status_code=404, detail="?? ???????")
-    if user.banned:
-        raise HTTPException(status_code=403, detail="??????? ????????????")
-    if user.link_suspended:
-        raise HTTPException(status_code=403, detail="???????? ??????????????")
-
-    marz_user = await session.scalar(select(models.MarzbanUser).where(models.MarzbanUser.user_id == user.id))
-    server = await session.get(models.MarzbanServer, marz_user.server_id) if marz_user and marz_user.server_id else None
-    link_value = marz_user.sub_url if marz_user else make_wireguard_link(user.link_slug)
-
-    return {
-        "link": link_value,
-        "server_endpoint": server.api_url if server else None,
-        "expires_at": user.subscription_end,
-        "devices_allowed": user.allowed_devices,
-        "notice": "??????????? ?????? ? ?????????? 1VPN ??? ???????????.",
-    }
+    raise HTTPException(status_code=404, detail="?????? ??????????")
 

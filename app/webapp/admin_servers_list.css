@@ -14,3 +14,38 @@
 .server-item button, .server-item input {
   margin-left: 8px;
 }
+
+/* Admin horizontal layout */
+.admin-layout .container {
+  max-width: 1200px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+.admin-layout .card.admin {
+  flex: 1;
+  min-width: 340px;
+}
+.admin-layout .card.admin:nth-of-type(2) {
+  flex: 2;
+}
+.admin-layout .admin-block {
+  margin-bottom: 14px;
+}
+.admin-layout .status-dot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.admin-layout .status-dot::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #888;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.35);
+}
+.admin-layout .status-ok::before { background: #47ff93; box-shadow: 0 0 10px rgba(71,255,147,0.6); }
+.admin-layout .status-bad::before { background: #ff4d4f; box-shadow: 0 0 10px rgba(255,77,79,0.6); }

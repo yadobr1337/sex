@@ -7,33 +7,34 @@
   <link rel="stylesheet" href="/static/styles.css">
   <link rel="stylesheet" href="/static/admin_servers_list.css">
 </head>
-<body>
+<body class="admin-layout">
   <div class="background"></div>
   <main class="container">
-    <section class="card admin pulse-card">
-      <div class="section-title">Админка 1VPN</div>
+    <section class="card admin pulse-card" id="auth-card">
+      <div class="section-title">??????? 1VPN</div>
       <div class="admin-block" id="login-block">
-        <input id="login-username" placeholder="Логин" value="admin" />
-        <input id="login-password" placeholder="Пароль" type="password" value="admin" />
-        <button class="accent" id="login-btn">Войти</button>
+        <input id="login-username" placeholder="?????" value="admin" />
+        <input id="login-password" placeholder="??????" type="password" value="admin" />
+        <button class="accent" id="login-btn">?????</button>
       </div>
       <div id="status-line" class="label"></div>
+      <div id="rem-status" class="label status-dot" hidden>???????? ??????...</div>
     </section>
 
     <section class="card admin pulse-card" id="panel" hidden>
-      <div class="section-title">Управление</div>
+      <div class="section-title">??????????</div>
 
       <div class="admin-block" id="creds-block">
-        <div class="label">Обновить логин/пароль</div>
-        <input id="new-username" placeholder="Новый логин" />
-        <input id="new-password" placeholder="Новый пароль" type="password" />
-        <button class="ghost" id="save-creds">Сохранить</button>
+        <div class="label">????? ?????/??????</div>
+        <input id="new-username" placeholder="????? ?????" />
+        <input id="new-password" placeholder="????? ??????" type="password" />
+        <button class="ghost" id="save-creds">?????????</button>
       </div>
 
       <div class="admin-block">
-        <div class="label">Рассылка</div>
-        <textarea id="broadcast-text" rows="3" placeholder="Сообщение"></textarea>
-        <button class="accent" id="broadcast-btn">Отправить</button>
+        <div class="label">????????</div>
+        <textarea id="broadcast-text" rows="3" placeholder="????? ?????????"></textarea>
+        <button class="accent" id="broadcast-btn">?????????</button>
       </div>
 
       <div class="admin-block">
@@ -46,19 +47,19 @@
       </div>
 
       <div class="admin-block">
-        <div class="label">Цена за день (₽)</div>
-        <input id="price-day" type="number" min="1" value="10" placeholder="Цена" />
-        <button class="accent" id="save-price">Сохранить цену</button>
+        <div class="label">???? ?? ???? (?)</div>
+        <input id="price-day" type="number" min="1" value="10" placeholder="????" />
+        <button class="accent" id="save-price">????????? ????</button>
       </div>
 
       <div class="admin-block">
-        <div class="label">Баланс / Бан</div>
-        <input id="admin-user-id" placeholder="telegram_id или @username" />
-        <input id="admin-amount" type="number" placeholder="Сумма пополнения" />
+        <div class="label">?????? / ???</div>
+        <input id="admin-user-id" placeholder="telegram_id ??? @username" />
+        <input id="admin-amount" type="number" placeholder="????? ??????????" />
         <div class="admin-actions">
-          <button class="ghost" id="admin-topup">Пополнить</button>
-          <button class="ghost danger" id="admin-ban">Забанить</button>
-          <button class="ghost" id="admin-unban">Разбанить</button>
+          <button class="ghost" id="admin-topup">?????????</button>
+          <button class="ghost danger" id="admin-ban">????????</button>
+          <button class="ghost" id="admin-unban">?????????</button>
         </div>
       </div>
     </section>
