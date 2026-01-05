@@ -2,6 +2,12 @@
 const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 if (tg && tg.ready) tg.ready();
 
+// Если не Telegram WebApp - показываем пустую страницу
+if (!tg) {
+  document.body.innerHTML = "";
+  document.documentElement.style.background = "#000";
+}
+
 var initData = (tg && tg.initData) || localStorage.getItem("initData") || "";
 var state = null;
 var policyAccepted = localStorage.getItem("policyAccepted") === "1";
