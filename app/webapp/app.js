@@ -91,6 +91,7 @@ function hideGate() {
 
 function renderDevices(devices) {
   var list = el("device-list");
+  if (!list || list.hasAttribute("hidden")) return;
   list.innerHTML = "";
   if (!devices.length) {
     list.innerHTML = '<div class="label">Пока нет устройств</div>';

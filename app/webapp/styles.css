@@ -359,8 +359,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1200;
-  padding: 20px;
+  z-index: 1600;
+  padding: 20px 16px;
+  min-height: 100vh;
 }
 .modal-card {
   width: 90%;
