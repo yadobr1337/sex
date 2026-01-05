@@ -1,7 +1,7 @@
 from aiogram import Bot, Dispatcher, F
-from aiogram.filters import Command
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 from aiogram.client.default import DefaultBotProperties
+from aiogram.filters import Command
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 
 from .config import settings
 
@@ -19,14 +19,76 @@ bot = Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode="HTM
 dp = Dispatcher()
 
 
+async def is_subscribed(user_id: int) -> bool:
+    """Проверка подписки на канал, если указан REQUIRED_CHANNEL."""
+    if not settings.required_channel:
+        return True
+    try:
+        member = await bot.get_chat_member(settings.required_channel, user_id)
+        return member.status in {"member", "administrator", "creator"}
+    except Exception:
+        return False
+
+
+def subscribe_keyboard() -> InlineKeyboardMarkup:
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text="Подписаться",
+                url=f"https://t.me/{settings.required_channel.lstrip('@')}" if settings.required_channel else "",
+            )
+        ],
+        [InlineKeyboardButton(text="Проверить", callback_data="check_sub")],
+    ]
+    if settings.policy_url:
+        buttons.append([InlineKeyboardButton(text="Политика конфиденциальности", url=settings.policy_url)])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def policy_keyboard() -> InlineKeyboardMarkup:
+    rows = []
+    if settings.policy_url:
+        rows.append([InlineKeyboardButton(text="Политика конфиденциальности", url=settings.policy_url)])
+    rows.append([InlineKeyboardButton(text="Согласен", callback_data="accept_policy")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
+    if not await is_subscribed(message.from_user.id):
+        await message.answer(
+            "Чтобы продолжить, подпишитесь на наш канал и нажмите «Проверить».",
+            reply_markup=subscribe_keyboard(),
+        )
+        return
     await message.answer(
-        "Добро пожаловать в 1VPN. Управляйте подпиской и устройствами через мини-приложение.",
-        reply_markup=webapp_keyboard(),
+        "Пожалуйста, согласитесь с политикой конфиденциальности, чтобы открыть 1VPN.",
+        reply_markup=policy_keyboard(),
     )
 
 
 @dp.message(F.text.lower().contains("поддержка"))
 async def support(message: Message):
-    await message.answer("Напишите нам в поддержку", reply_markup=webapp_keyboard())
+    await message.answer("Нажмите кнопку ниже, чтобы связаться с поддержкой.", reply_markup=webapp_keyboard())
+
+
+@dp.callback_query(F.data == "check_sub")
+async def cb_check_sub(query: CallbackQuery):
+    if not await is_subscribed(query.from_user.id):
+        await query.answer("Нет подписки на канал", show_alert=True)
+        return
+    await query.message.edit_text(
+        "Подписка подтверждена. Согласитесь с политикой, чтобы открыть 1VPN.",
+        reply_markup=policy_keyboard(),
+    )
+    await query.answer()
+
+
+@dp.callback_query(F.data == "accept_policy")
+async def cb_accept_policy(query: CallbackQuery):
+    if not await is_subscribed(query.from_user.id):
+        await query.message.edit_text("Сначала подпишитесь на канал.", reply_markup=subscribe_keyboard())
+        await query.answer("Нет подписки на канал", show_alert=True)
+        return
+    await query.message.edit_text("Готово! Открывайте мини-приложение 1VPN.", reply_markup=webapp_keyboard())
+    await query.answer()

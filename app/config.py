@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     admin_tg_id: str | None = None
     database_url: str = "sqlite+aiosqlite:///./data.db"
     support_username: str = "support"
+    required_channel: str | None = None  # формат @channel или username
+    policy_url: str | None = None
     ios_help_url: str = "https://telegra.ph/ios-vpn-install"
     android_help_url: str = "https://telegra.ph/android-vpn-install"
     domain: str = "the1priority.ru"
