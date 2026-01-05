@@ -251,6 +251,15 @@ body {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.device-item.fade-new {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.device-item.fade-new.show {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .alert {
@@ -273,12 +282,12 @@ body {
 
 .updating::after {
   content: "";
-  position: absolute;
-  right: -18px;
-  top: 50%;
+  position: static;
+  display: inline-block;
   width: 12px;
   height: 12px;
-  margin-top: -6px;
+  margin-left: 6px;
+  vertical-align: middle;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.35);
   border-top-color: var(--yellow);

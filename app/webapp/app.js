@@ -98,7 +98,7 @@ function renderDevices(devices) {
   }
   devices.forEach(function (d, idx) {
     var item = document.createElement("div");
-    item.className = "device-item";
+    item.className = "device-item fade-new";
     item.innerHTML =
       '<div><div class="value">' + d.label + '</div><div class="label">' +
       d.fingerprint.slice(0, 8) + ' - ' + new Date(d.last_seen).toLocaleDateString() +
@@ -107,12 +107,26 @@ function renderDevices(devices) {
     var btn = item.querySelector("button");
     if (btn) btn.onclick = function () { deleteDevice(d.id); };
     list.appendChild(item);
+    requestAnimationFrame(function () {
+      item.classList.add("show");
+    });
   });
 }
 
 function loadState() {
   return api("/api/state").then(function (data) {
     state = data;
+    if (state.banned) {
+      showGate("Вы заблокированы. Обратитесь в поддержку.", [
+        {
+          text: "Поддержка",
+          onClick: function () {
+            if (state.support_url) window.open(state.support_url, "_blank");
+          },
+        },
+      ]);
+      return;
+    }
     var balanceChanged = prev.balance !== state.balance;
     if (balanceChanged) setUpdating("balance", true);
     setTextSmooth("balance", state.balance + " ₽");
