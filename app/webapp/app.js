@@ -3,8 +3,6 @@ if (tg) tg.ready();
 
 const initData = tg?.initData || localStorage.getItem("initData") || "";
 let state = null;
-const fingerprint = localStorage.getItem("wg_device_id") || crypto.randomUUID();
-localStorage.setItem("wg_device_id", fingerprint);
 
 const el = (id) => document.getElementById(id);
 
@@ -55,7 +53,7 @@ async function loadState() {
   renderDevices(state.devices);
   el("wg-link").innerText = state.link || "—";
   const connectBtn = el("connect-btn");
-  if (connectBtn) connectBtn.disabled = !state.link || state.link_suspended;
+  if (connectBtn) connectBtn.disabled = !state.link;
   el("suspended-banner").hidden = !state.link_suspended;
   el("ios-help").href = state.ios_help_url;
   el("android-help").href = state.android_help_url;
@@ -75,10 +73,13 @@ async function topup() {
 
 async function addDevice() {
   try {
-    await api("/api/device", { method: "POST", body: { fingerprint, label: "Мое устройство" } });
+    const fp = crypto.randomUUID();
+    const label = `Устройство ${state?.devices?.length ? state.devices.length + 1 : 1}`;
+    await api("/api/device", { method: "POST", body: { fingerprint: fp, label } });
     await loadState();
   } catch (e) {
     console.error(e);
+    if (tg) tg.showPopup({ message: e.message || "Не удалось добавить устройство" });
   }
 }
 
