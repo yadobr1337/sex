@@ -32,6 +32,8 @@ from .schemas import (
     AdminBan,
     AdminBroadcast,
     AdminBroadcastPhoto,
+    AdminBalanceAdjust,
+    AdminUserLookup,
     AdminServer,
     AdminServerDelete,
     AdminServerUpdate,
@@ -1151,6 +1153,43 @@ async def admin_topup(
     await session.commit()
 
     return {"ok": True, "balance": target.balance}
+
+
+@app.post("/admin/ui/debit")
+async def admin_ui_debit(
+    payload: AdminBalanceAdjust,
+    _: str = Depends(admin_ui_guard),
+    session: AsyncSession = Depends(get_session),
+):
+    target = await session.scalar(find_user_query(payload.telegram_id, payload.username))
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    if payload.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+    target.balance = max(0, target.balance - payload.amount)
+    await session.commit()
+    return {"ok": True, "balance": target.balance}
+
+
+@app.post("/admin/ui/userinfo")
+async def admin_ui_userinfo(
+    payload: AdminUserLookup,
+    _: str = Depends(admin_ui_guard),
+    session: AsyncSession = Depends(get_session),
+):
+    target = await session.scalar(find_user_query(payload.telegram_id, payload.username))
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    device_count = await session.scalar(
+        select(func.count(models.Device.id)).where(models.Device.user_id == target.id)
+    ) or 0
+    return {
+        "balance": target.balance,
+        "subscription_end": target.subscription_end,
+        "allowed_devices": target.allowed_devices,
+        "devices": device_count,
+        "banned": target.banned,
+    }
 
 
 

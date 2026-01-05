@@ -82,6 +82,17 @@ class AdminBalance(BaseModel):
     amount: int
 
 
+class AdminBalanceAdjust(BaseModel):
+    telegram_id: Optional[str] = None
+    username: Optional[str] = None
+    amount: int
+
+
+class AdminUserLookup(BaseModel):
+    telegram_id: Optional[str] = None
+    username: Optional[str] = None
+
+
 class AdminTariff(BaseModel):
     name: str
     days: int

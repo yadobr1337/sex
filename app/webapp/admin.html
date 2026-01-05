@@ -11,7 +11,7 @@
   <div class="background"></div>
   <main class="container">
     <section class="card admin pulse-card" id="auth-card">
-      <div class="section-title">Админка 1VPN</div>
+      <div class="section-title">Админ 1VPN</div>
       <div class="admin-block" id="login-block">
         <input id="login-username" placeholder="Логин" value="admin" />
         <input id="login-password" placeholder="Пароль" type="password" value="admin" />
@@ -26,14 +26,14 @@
 
       <div class="admin-block" id="creds-block">
         <div class="label">Новый логин/пароль</div>
-        <input id="new-username" placeholder="Новый логин" />
-        <input id="new-password" placeholder="Новый пароль" type="password" />
+        <input id="new-username" placeholder="Логин" />
+        <input id="new-password" placeholder="Пароль" type="password" />
         <button class="ghost" id="save-creds">Сохранить</button>
       </div>
 
       <div class="admin-block">
         <div class="label">Рассылка</div>
-        <textarea id="broadcast-text" rows="3" placeholder="Текст сообщения"></textarea>
+        <textarea id="broadcast-text" rows="3" placeholder="Сообщение"></textarea>
         <input id="broadcast-photo" type="file" accept="image/*" />
         <button class="accent" id="broadcast-btn">Отправить</button>
       </div>
@@ -42,26 +42,29 @@
         <div class="label">Remnawave сквады</div>
         <input id="rem-name" placeholder="Имя" />
         <input id="rem-uuid" placeholder="UUID сквада" />
-        <input id="rem-capacity" type="number" min="1" value="50" placeholder="Ёмкость (пользователи)" />
+        <input id="rem-capacity" type="number" min="1" value="50" placeholder="Вместимость" />
         <button class="accent" id="add-rem">Добавить сквад</button>
         <div class="server-list" id="rem-list"></div>
       </div>
 
       <div class="admin-block">
-        <div class="label">Цена за день (₽)</div>
+        <div class="label">Цена за 1 день (руб)</div>
         <input id="price-day" type="number" min="1" value="10" placeholder="Цена" />
         <button class="accent" id="save-price">Сохранить цену</button>
       </div>
 
       <div class="admin-block">
-        <div class="label">Баланс / Бан</div>
+        <div class="label">Пользователь / баланс</div>
         <input id="admin-user-id" placeholder="telegram_id или @username" />
-        <input id="admin-amount" type="number" placeholder="Сумма пополнения" />
+        <input id="admin-amount" type="number" placeholder="Сумма" />
         <div class="admin-actions">
+          <button class="ghost" id="admin-info">Показать</button>
           <button class="ghost" id="admin-topup">Пополнить</button>
+          <button class="ghost" id="admin-debit">Списать</button>
           <button class="ghost danger" id="admin-ban">Забанить</button>
           <button class="ghost" id="admin-unban">Разбанить</button>
         </div>
+        <div class="label" id="admin-user-info"></div>
       </div>
     </section>
   </main>
