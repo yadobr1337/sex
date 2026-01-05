@@ -196,7 +196,7 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
         except Exception:
             pass
         # уведомление о паузе подписки
-        if user.telegram_id and not prev_suspended:
+        if user.telegram_id and not prev_suspended and (user.balance > 0 or prev_days is not None):
             try:
                 await bot.send_message(
                     int(user.telegram_id),
@@ -225,7 +225,7 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
             user.link_suspended = True
             link_value = ""
         # уведомление о скором окончании
-        if user.telegram_id and 0 < estimated_days <= 3:
+        if user.telegram_id and 0 < estimated_days <= 3 and user.balance > 0 and prev_days is not None:
             send_warn = True
             if prev_days is not None and prev_days <= 3:
                 send_warn = False
@@ -233,7 +233,7 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
                 try:
                     await bot.send_message(
                         int(user.telegram_id),
-                        "Извините, у вас осталось менее 3 дней подписки. Пополните баланс, чтобы продолжить.",
+                        "У вас осталось менее 3 дней подписки. Пополните баланс, чтобы продолжить.",
                         reply_markup=webapp_keyboard(),
                     )
                 except Exception:
