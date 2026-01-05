@@ -1,7 +1,7 @@
 import asyncio
 
 import math
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 from typing import Optional
 
 import aiohttp
@@ -152,7 +152,11 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
     prev_suspended = user.link_suspended
     prev_days = None
     if user.subscription_end:
-        delta = user.subscription_end - now_utc()
+        sub_end = user.subscription_end
+        if sub_end.tzinfo is None:
+            sub_end = sub_end.replace(tzinfo=timezone.utc)
+            user.subscription_end = sub_end
+        delta = sub_end - now_utc()
         prev_days = math.ceil(delta.total_seconds() / 86400)
 
     # Если пользователь забанен — сразу блокируем доступ и выходим
