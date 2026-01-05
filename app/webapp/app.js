@@ -164,18 +164,36 @@ function topup() {
   window.location.href = url;
 }
 
-function addDevice() {
-  var fp = randomId();
-  var label = "Устройство " + (state && state.devices && state.devices.length ? state.devices.length + 1 : 1);
-  api("/api/device", { method: "POST", body: { fingerprint: fp, label: label } })
-    .then(loadState)
-    .catch(function (e) {
-      if (tg && tg.showPopup) tg.showPopup({ message: e.message || "Ошибка при добавлении устройства" });
-    });
-}
-
 function deleteDevice(id) {
   api("/api/device/" + id, { method: "DELETE" }).then(loadState).catch(function () { });
+}
+
+function setDevicesCount() {
+  var desired = prompt("Сколько устройств нужно?", state ? state.allowed_devices : 1);
+  if (!desired) return;
+  desired = parseInt(desired, 10);
+  if (isNaN(desired) || desired < 1) return;
+  var current = state && state.devices ? state.devices.length : 0;
+  var ops = Promise.resolve();
+  if (desired > current) {
+    var toAdd = desired - current;
+    ops = Array.from({ length: toAdd }).reduce(function (p, _, idx) {
+      return p.then(function () {
+        var fp = randomId();
+        var label = "Устройство " + (current + idx + 1);
+        return api("/api/device", { method: "POST", body: { fingerprint: fp, label: label } });
+      });
+    }, Promise.resolve());
+  } else if (desired < current) {
+    var toRemove = current - desired;
+    var ids = (state.devices || []).slice(-toRemove).map(function (d) { return d.id; });
+    ops = ids.reduce(function (p, id) {
+      return p.then(function () { return api("/api/device/" + id, { method: "DELETE" }); });
+    }, Promise.resolve());
+  }
+  ops.then(loadState).catch(function (e) {
+    if (tg && tg.showPopup) tg.showPopup({ message: e.message || "Не удалось изменить количество устройств" });
+  });
 }
 
 function copyLink() {
@@ -190,7 +208,7 @@ function openLink() {
 }
 
 el("topup-btn").onclick = topup;
-el("add-device").onclick = addDevice;
+el("add-device").onclick = setDevicesCount;
 el("copy-link").onclick = copyLink;
 var connectBtnInit = el("connect-btn");
 if (connectBtnInit) connectBtnInit.onclick = openLink;
