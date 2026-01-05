@@ -137,9 +137,10 @@ function loadState() {
     setTextSmooth("devices-allowed", state.allowed_devices || 1);
     renderDevices(state.devices);
 
+    var placeholderLink = "Пополните баланс для получения ссылки";
     var linkChanged = prev.link !== state.link;
     if (linkChanged) setUpdating("wg-link", true);
-    setTextSmooth("wg-link", state.link || "—");
+    setTextSmooth("wg-link", state.link || placeholderLink);
     if (linkChanged) setTimeout(function () { setUpdating("wg-link", false); }, 500);
 
     var connectBtn = el("connect-btn");
