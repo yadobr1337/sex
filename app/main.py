@@ -148,6 +148,7 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
     estimated_days = 0
     rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == user.id))
     panel_uuid_current = rem_user.panel_uuid if rem_user else ""
+    short_uuid_current = rem_user.short_uuid if rem_user else ""
 
     if cost > 0:
         estimated_days = int(user.balance / cost)
@@ -158,8 +159,12 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
         user.link_suspended = True
         expires_at = now_utc()
         try:
-            panel_uuid, _, _ = await rem_upsert_user(session, user, device_count, expires_at)
-            await rem_disable_user(panel_uuid or panel_uuid_current)
+            panel_uuid, short_uuid, _ = await rem_upsert_user(session, user, device_count, expires_at)
+            rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == user.id))
+            current_uuid = panel_uuid or (rem_user.panel_uuid if rem_user else "") or panel_uuid_current
+            if not current_uuid:
+                current_uuid = short_uuid or (rem_user.short_uuid if rem_user else "") or short_uuid_current
+            await rem_disable_user(current_uuid)
         except Exception:
             pass
     else:
@@ -168,8 +173,12 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
         user.allowed_devices = device_count
         user.link_suspended = False
         try:
-            panel_uuid, _, sub_url = await rem_upsert_user(session, user, device_count, expires_at)
-            await rem_enable_user(panel_uuid or panel_uuid_current)
+            panel_uuid, short_uuid, sub_url = await rem_upsert_user(session, user, device_count, expires_at)
+            rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == user.id))
+            current_uuid = panel_uuid or (rem_user.panel_uuid if rem_user else "") or panel_uuid_current
+            if not current_uuid:
+                current_uuid = short_uuid or (rem_user.short_uuid if rem_user else "") or short_uuid_current
+            await rem_enable_user(current_uuid)
             if sub_url:
                 link_value = sub_url
             elif rem_user and rem_user.subscription_url:
