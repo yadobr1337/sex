@@ -108,9 +108,15 @@ async def rem_upsert_user(
         raise HTTPException(status_code=503, detail="Нет свободных Remnawave сквадов")
 
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    expire_str = (
+        expires_at.astimezone(__import__("datetime").timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
     payload = {
         "username": f"tg{user.telegram_id}",
-        "expireAt": expires_at.replace(microsecond=0).isoformat() + "Z",
+        "expireAt": expire_str,
         "hwidDeviceLimit": devices,
         "activeInternalSquads": [squad.uuid],
         "telegramId": int(user.telegram_id) if str(user.telegram_id).isdigit() else None,
