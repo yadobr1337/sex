@@ -60,11 +60,23 @@ el("save-creds").onclick = async () => {
 
 el("broadcast-btn").onclick = async () => {
   const message = el("broadcast-text").value.trim();
-  const photo = el("broadcast-photo")?.value.trim();
-  if (!message) return setStatus("Пустое сообщение", false);
+  const photoInput = el("broadcast-photo");
+  const file = photoInput?.files?.[0];
+  if (!message && !file) return setStatus("Пустое сообщение", false);
   try {
-    if (photo) {
-      await api("/admin/ui/broadcast_photo", { message, photo_url: photo });
+    if (file) {
+      const form = new FormData();
+      form.append("message", message);
+      form.append("file", file);
+      const res = await fetch("/admin/ui/broadcast_photo_upload", {
+        method: "POST",
+        headers: { ...(token ? { "X-Admin-Token": token } : {}) },
+        body: form,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || res.statusText);
+      }
       setStatus("Рассылка с фото отправлена");
     } else {
       await api("/admin/ui/broadcast", { message });

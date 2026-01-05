@@ -5,7 +5,7 @@ from datetime import timedelta, datetime
 from typing import Optional
 
 import aiohttp
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, status, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 
 from fastapi.responses import FileResponse, HTMLResponse
@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from . import models
 
 from .bot import bot, dp, webapp_keyboard
+from aiogram import types
 
 from .config import settings
 
@@ -93,6 +94,39 @@ async def pick_rem_squad(session: AsyncSession) -> Optional[models.RemSquad]:
         if (used or 0) < squad.capacity:
             return squad
     return None
+
+
+async def rem_register_hwid(session: AsyncSession, user: models.User, device: models.Device) -> None:
+    base_url, base_api, token = get_rem_config()
+    rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == user.id))
+    if not rem_user or not rem_user.panel_uuid:
+        return
+    payload = {
+        "hwid": device.fingerprint,
+        "userUuid": rem_user.panel_uuid,
+        "platform": "1VPN",
+        "osVersion": "webapp",
+        "deviceModel": device.label or "device",
+        "userAgent": "1VPN-webapp",
+    }
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    async with aiohttp.ClientSession() as http:
+        async with http.post(f"{base_api}/hwid/devices", json=payload, headers=headers) as resp:
+            if resp.status not in (200, 201, 204):
+                return
+
+
+async def rem_delete_hwid(session: AsyncSession, user: models.User, hwid: str) -> None:
+    base_url, base_api, token = get_rem_config()
+    rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == user.id))
+    if not rem_user or not rem_user.panel_uuid:
+        return
+    payload = {"userUuid": rem_user.panel_uuid, "hwid": hwid}
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    async with aiohttp.ClientSession() as http:
+        async with http.post(f"{base_api}/hwid/devices/delete", json=payload, headers=headers) as resp:
+            if resp.status not in (200, 201, 204):
+                return
 
 
 async def rem_upsert_user(
@@ -767,15 +801,47 @@ async def register_device(
 
         existing.last_seen = now_utc()
 
+        device = existing
+
         await session.commit()
 
     count = await session.scalar(select(func.count(models.Device.id)).where(models.Device.user_id == user.id))
 
-    if count and count > (user.allowed_devices or 1):
+    device_count = max(count or 0, 1)
 
-        user.allowed_devices = count
+    price_value = await get_price(session)
 
-    user.link_suspended = False
+    cost_per_day = price_value * device_count if price_value else 0
+
+    estimated_days = int(user.balance / cost_per_day) if cost_per_day else 0
+
+    user.allowed_devices = device_count
+
+    if estimated_days > 0:
+
+        expires_at = now_utc() + timedelta(days=estimated_days)
+
+        user.subscription_end = expires_at
+
+        user.link_suspended = False
+
+    else:
+
+        expires_at = now_utc()
+
+        user.subscription_end = None
+
+        user.link_suspended = True
+
+    try:
+
+        await rem_upsert_user(session, user, device_count, expires_at)
+
+        await rem_register_hwid(session, user, device)
+
+    except Exception:
+
+        user.link_suspended = True
 
     await session.commit()
 
@@ -807,11 +873,43 @@ async def delete_device(
 
     await session.commit()
 
-    # обновляем лимит устройств после удаления
-
     remaining = await session.scalar(select(func.count(models.Device.id)).where(models.Device.user_id == user.id))
 
-    user.allowed_devices = max(remaining or 0, 1)
+    device_count = max(remaining or 0, 1)
+
+    price_value = await get_price(session)
+
+    cost_per_day = price_value * device_count if price_value else 0
+
+    estimated_days = int(user.balance / cost_per_day) if cost_per_day else 0
+
+    user.allowed_devices = device_count
+
+    if estimated_days > 0:
+
+        expires_at = now_utc() + timedelta(days=estimated_days)
+
+        user.subscription_end = expires_at
+
+        user.link_suspended = False
+
+    else:
+
+        expires_at = now_utc()
+
+        user.subscription_end = None
+
+        user.link_suspended = True
+
+    try:
+
+        await rem_upsert_user(session, user, device_count, expires_at)
+
+        await rem_delete_hwid(session, user, device.fingerprint)
+
+    except Exception:
+
+        user.link_suspended = True
 
     await session.commit()
 
@@ -1160,6 +1258,26 @@ async def admin_ui_broadcast_photo(
                 caption=payload.message or None,
                 reply_markup=webapp_keyboard(),
             )
+            sent += 1
+        except Exception:
+            continue
+    return {"sent": sent}
+
+
+@app.post("/admin/ui/broadcast_photo_upload")
+async def admin_ui_broadcast_photo_upload(
+    message: str = Form(""),
+    file: UploadFile = File(...),
+    _: str = Depends(admin_ui_guard),
+    session: AsyncSession = Depends(get_session),
+):
+    users = (await session.scalars(select(models.User))).all()
+    data = await file.read()
+    input_file = types.BufferedInputFile(data, filename=file.filename or "photo.jpg")
+    sent = 0
+    for item in users:
+        try:
+            await bot.send_photo(int(item.telegram_id), input_file, caption=message or None, reply_markup=webapp_keyboard())
             sent += 1
         except Exception:
             continue
