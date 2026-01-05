@@ -3,11 +3,24 @@ const el = (id) => document.getElementById(id);
 const statusLine = () => el("status-line");
 let statusTimer = null;
 
+function showToast(msg, ok = true) {
+  const box = el("toast-container");
+  if (!box) return;
+  const t = document.createElement("div");
+  t.className = "toast " + (ok ? "ok" : "err");
+  t.textContent = msg;
+  box.appendChild(t);
+  setTimeout(() => {
+    t.remove();
+  }, 4000);
+}
+
 function setStatus(msg, ok = true) {
   const s = statusLine();
   if (!s) return;
   s.textContent = msg || "";
   s.style.color = ok ? "#8dffa8" : "#ffb3ad";
+   showToast(msg, ok);
 }
 
 async function api(path, body) {
@@ -112,12 +125,20 @@ async function loadRemSquads() {
     data.forEach((s) => {
       const row = document.createElement("div");
       row.className = "server-item";
-      row.innerHTML = `<div><div class="value">${s.name}</div><div class="label">${s.uuid}</div><div class="label">Вместимость: ${s.capacity}</div></div>`;
+      const nameCol = document.createElement("div");
+      nameCol.className = "value";
+      nameCol.textContent = s.name;
+      const uuidCol = document.createElement("div");
+      uuidCol.className = "label";
+      uuidCol.textContent = s.uuid;
       const input = document.createElement("input");
       input.type = "number";
       input.min = "1";
       input.value = s.capacity;
       input.className = "inline-input";
+
+      const actions = document.createElement("div");
+      actions.className = "actions";
 
       const upd = document.createElement("button");
       upd.className = "ghost";
@@ -126,7 +147,7 @@ async function loadRemSquads() {
         const cap = parseInt(input.value, 10) || s.capacity;
         try {
           await api("/admin/ui/rem/squads/update", { squad_id: s.id, capacity: cap });
-          setStatus("Лимит обновлён");
+          setStatus("Ёмкость обновлена");
           await loadRemSquads();
         } catch (e) {
           setStatus(e.message, false);
@@ -145,9 +166,13 @@ async function loadRemSquads() {
           setStatus(e.message, false);
         }
       };
+      actions.appendChild(upd);
+      actions.appendChild(del);
+
+      row.appendChild(nameCol);
+      row.appendChild(uuidCol);
       row.appendChild(input);
-      row.appendChild(upd);
-      row.appendChild(del);
+      row.appendChild(actions);
       list.appendChild(row);
     });
   } catch {
@@ -272,6 +297,7 @@ el("admin-ban").onclick = async () => {
   try {
     await api("/admin/ui/ban", { ...body, banned: true });
     setStatus("Пользователь забанен");
+    if (infoBtn) infoBtn.click();
   } catch (e) {
     setStatus(e.message, false);
   }
@@ -283,6 +309,7 @@ el("admin-unban").onclick = async () => {
   try {
     await api("/admin/ui/ban", { ...body, banned: false });
     setStatus("Пользователь разбанен");
+    if (infoBtn) infoBtn.click();
   } catch (e) {
     setStatus(e.message, false);
   }

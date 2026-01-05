@@ -12,11 +12,19 @@ var initData = (tg && tg.initData) || localStorage.getItem("initData") || "";
 var state = null;
 var policyAccepted = localStorage.getItem("policyAccepted") === "1";
 var stateTimer = null;
+var prev = {};
 
 function el(id) {
   return document.getElementById(id);
 }
 var mainEl = document.querySelector("main");
+
+function setUpdating(id, flag) {
+  var node = el(id);
+  if (!node) return;
+  if (flag) node.classList.add("updating");
+  else node.classList.remove("updating");
+}
 
 function setTextSmooth(id, text) {
   var node = el(id);
@@ -105,11 +113,20 @@ function renderDevices(devices) {
 function loadState() {
   return api("/api/state").then(function (data) {
     state = data;
+    var balanceChanged = prev.balance !== state.balance;
+    if (balanceChanged) setUpdating("balance", true);
     setTextSmooth("balance", state.balance + " ₽");
+    if (balanceChanged) setTimeout(function () { setUpdating("balance", false); }, 500);
+
     setTextSmooth("days", "~" + state.estimated_days + " д");
     setTextSmooth("devices-allowed", state.allowed_devices || 1);
     renderDevices(state.devices);
+
+    var linkChanged = prev.link !== state.link;
+    if (linkChanged) setUpdating("wg-link", true);
     setTextSmooth("wg-link", state.link || "—");
+    if (linkChanged) setTimeout(function () { setUpdating("wg-link", false); }, 500);
+
     var connectBtn = el("connect-btn");
     if (connectBtn) connectBtn.disabled = !state.link;
     el("suspended-banner").hidden = !state.link_suspended;
@@ -122,6 +139,8 @@ function loadState() {
     }
     var openAdmin = document.getElementById("open-admin");
     if (openAdmin) openAdmin.hidden = !state.is_admin;
+    prev.balance = state.balance;
+    prev.link = state.link;
   });
 }
 
