@@ -1707,56 +1707,34 @@ async def admin_ui_tariffs(
 
 
 @app.post("/admin/ui/topup")
-
 async def admin_ui_topup(
-
     payload: AdminBalance,
-
     _: str = Depends(admin_ui_guard),
-
     session: AsyncSession = Depends(get_session),
-
 ):
-
     target = await session.scalar(find_user_query(payload.telegram_id, payload.username))
-
     if not target:
-
         raise HTTPException(status_code=404, detail="User not found")
-
     target.balance += payload.amount
-
-    await session.commit()
-
-    return {"ok": True, "balance": target.balance}
+    result = await recalc_subscription(session, target)
+    return {"ok": True, "balance": target.balance, "link_suspended": result["link_suspended"]}
 
 
 
 
 
 @app.post("/admin/ui/ban")
-
 async def admin_ui_ban(
-
     payload: AdminBan,
-
     _: str = Depends(admin_ui_guard),
-
     session: AsyncSession = Depends(get_session),
-
 ):
-
     target = await session.scalar(find_user_query(payload.telegram_id, payload.username))
-
     if not target:
-
         raise HTTPException(status_code=404, detail="User not found")
-
     target.banned = payload.banned
-
-    await session.commit()
-
-    return {"ok": True, "banned": target.banned}
+    result = await recalc_subscription(session, target)
+    return {"ok": True, "banned": target.banned, "link_suspended": result["link_suspended"]}
 
 
 
