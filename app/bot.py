@@ -55,16 +55,7 @@ def policy_keyboard() -> InlineKeyboardMarkup:
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
-    if not await is_subscribed(message.from_user.id):
-        await message.answer(
-            "Чтобы продолжить, подпишитесь на наш канал и нажмите «Проверить».",
-            reply_markup=subscribe_keyboard(),
-        )
-        return
-    await message.answer(
-        "Пожалуйста, согласитесь с политикой конфиденциальности, чтобы открыть 1VPN.",
-        reply_markup=policy_keyboard(),
-    )
+    await message.answer("Открыть мини-приложение 1VPN:", reply_markup=webapp_keyboard())
 
 
 @dp.message(F.text.lower().contains("поддержка"))

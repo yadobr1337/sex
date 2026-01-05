@@ -72,7 +72,7 @@ function renderDevices(devices) {
 
 async function loadState() {
   state = await api("/api/state");
-  el("balance").innerText = `${state.balance} ₽`;
+  el("balance").innerText = `${state.balance} руб`;
   el("days").innerText = `~${state.estimated_days} д`;
   el("devices-allowed").innerText = state.allowed_devices || 1;
   renderDevices(state.devices);
@@ -159,24 +159,27 @@ async function runGate() {
   }
 
   if (!policyAccepted) {
-    showGate("Согласитесь с политикой конфиденциальности, чтобы открыть 1VPN.", [
-      gate.policy_url
-        ? {
-            text: "Политика",
-            className: "ghost",
-            onClick: () => window.open(gate.policy_url, "_blank"),
-          }
-        : null,
-      {
-        text: "Согласен",
-        onClick: () => {
-          policyAccepted = true;
-          localStorage.setItem("policyAccepted", "1");
-          hideGate();
-          loadState().catch(() => {});
+    showGate(
+      "Согласитесь с политикой конфиденциальности, чтобы открыть 1VPN.",
+      [
+        gate.policy_url
+          ? {
+              text: "Политика",
+              className: "ghost",
+              onClick: () => window.open(gate.policy_url, "_blank"),
+            }
+          : null,
+        {
+          text: "Согласен",
+          onClick: () => {
+            policyAccepted = true;
+            localStorage.setItem("policyAccepted", "1");
+            hideGate();
+            loadState().catch(() => {});
+          },
         },
-      },
-    ].filter(Boolean));
+      ].filter(Boolean)
+    );
     return;
   }
 
