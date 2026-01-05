@@ -352,6 +352,47 @@ body {
   flex: 1 1 auto;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 20px;
+}
+.modal-card {
+  width: 90%;
+  max-width: 380px;
+  background: #0d0d0f;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 14px 36px rgba(0,0,0,0.45);
+}
+.modal-card h3 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+.modal-card .range-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+}
+.modal-card input[type=range] {
+  flex: 1;
+}
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.modal-actions button {
+  flex: 1;
+}
+
 .user-info-card {
   margin-top: 8px;
   padding: 12px;

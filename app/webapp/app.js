@@ -169,10 +169,31 @@ function deleteDevice(id) {
 }
 
 function setDevicesCount() {
-  var desired = prompt("Сколько устройств нужно?", state ? state.allowed_devices : 1);
-  if (!desired) return;
-  desired = parseInt(desired, 10);
-  if (isNaN(desired) || desired < 1) return;
+  var backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  var card = document.createElement("div");
+  card.className = "modal-card";
+  var current = state ? state.allowed_devices || 1 : 1;
+  card.innerHTML = '<h3>Количество устройств</h3><div class="range-row"><input id="dev-range" type="range" min="1" max="5" value="' + current + '"><div class="value" id="dev-range-val">' + current + '</div></div><div class="modal-actions"><button class="ghost" id="range-cancel">Отмена</button><button class="accent" id="range-apply">OK</button></div>';
+  backdrop.appendChild(card);
+  document.body.appendChild(backdrop);
+
+  var range = card.querySelector("#dev-range");
+  var val = card.querySelector("#dev-range-val");
+  range.oninput = function () { val.textContent = range.value; };
+
+  card.querySelector("#range-cancel").onclick = function () {
+    backdrop.remove();
+  };
+  card.querySelector("#range-apply").onclick = function () {
+    var desired = parseInt(range.value, 10);
+    backdrop.remove();
+    if (!desired || desired < 1) return;
+    adjustDevices(desired);
+  };
+}
+
+function adjustDevices(desired) {
   var current = state && state.devices ? state.devices.length : 0;
   var ops = Promise.resolve();
   if (desired > current) {

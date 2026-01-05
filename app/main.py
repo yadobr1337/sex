@@ -742,12 +742,6 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
             .order_by(models.Device.id)
         )
     ).all()
-    if not devices:
-        default_dev = models.Device(user_id=user.id, fingerprint=new_slug(), label="Устройство 1")
-        session.add(default_dev)
-        await session.commit()
-        await session.refresh(default_dev)
-        devices = [default_dev]
 
     recalculated = await recalc_subscription(session, user)
     price_value = await get_price(session)
