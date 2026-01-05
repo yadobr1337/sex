@@ -42,6 +42,7 @@ from .schemas import (
     AdminMarzbanServer,
     AdminMarzbanServerDelete,
     AdminRemSquad,
+    AdminRemSquadUpdate,
     AdminRemSquadDelete,
     DeviceRequest,
     PaymentRequest,
@@ -272,6 +273,14 @@ app.add_middleware(
     allow_headers=["*"],
 
 )
+
+
+# Hide internal error details
+@app.exception_handler(Exception)
+async def internal_error_handler(request: Request, exc: Exception):
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(status_code=500, content={"detail": "error"})
 
 
 
@@ -1417,6 +1426,18 @@ async def admin_ui_rem_squad_create(
 async def admin_ui_rem_squad_list(_: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)):
     squads = (await session.scalars(select(models.RemSquad))).all()
     return [{"id": s.id, "name": s.name, "uuid": s.uuid, "capacity": s.capacity} for s in squads]
+
+
+@app.post("/admin/ui/rem/squads/update")
+async def admin_ui_rem_squad_update(
+    payload: AdminRemSquadUpdate, _: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)
+):
+    squad = await session.get(models.RemSquad, payload.squad_id)
+    if not squad:
+        raise HTTPException(status_code=404, detail="Not found")
+    squad.capacity = payload.capacity
+    await session.commit()
+    return {"ok": True, "capacity": squad.capacity}
 
 
 @app.post("/admin/ui/rem/squads/delete")

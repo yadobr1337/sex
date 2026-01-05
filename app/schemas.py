@@ -114,6 +114,11 @@ class AdminRemSquad(BaseModel):
     capacity: int = 50
 
 
+class AdminRemSquadUpdate(BaseModel):
+    squad_id: int
+    capacity: int = 50
+
+
 class AdminRemSquadDelete(BaseModel):
     squad_id: int
 

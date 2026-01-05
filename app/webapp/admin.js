@@ -97,25 +97,47 @@ async function loadRemSquads() {
     const list = el("rem-list");
     if (!list) return;
     list.innerHTML = "";
-    data.forEach((s) => {
-      const row = document.createElement("div");
-      row.className = "server-item";
-      row.innerHTML = `<div><div class="value">${s.name}</div><div class="label">${s.uuid}</div><div class="label">Ёмкость: ${s.capacity}</div></div>`;
-      const del = document.createElement("button");
-      del.className = "ghost danger";
-      del.textContent = "Удалить";
-      del.onclick = async () => {
-        try {
-          await api("/admin/ui/rem/squads/delete", { squad_id: s.id });
-          setStatus("Сквад удалён");
-          await loadRemSquads();
-        } catch (e) {
-          setStatus(e.message, false);
-        }
-      };
-      row.appendChild(del);
-      list.appendChild(row);
-    });
+  data.forEach((s) => {
+    const row = document.createElement("div");
+    row.className = "server-item";
+    row.innerHTML = `<div><div class="value">${s.name}</div><div class="label">${s.uuid}</div><div class="label">Ёмкость: ${s.capacity}</div></div>`;
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = "1";
+    input.value = s.capacity;
+    input.className = "inline-input";
+
+    const upd = document.createElement("button");
+    upd.className = "ghost";
+    upd.textContent = "Обновить";
+    upd.onclick = async () => {
+      const cap = parseInt(input.value, 10) || s.capacity;
+      try {
+        await api("/admin/ui/rem/squads/update", { squad_id: s.id, capacity: cap });
+        setStatus("Лимит обновлён");
+        await loadRemSquads();
+      } catch (e) {
+        setStatus(e.message, false);
+      }
+    };
+
+    const del = document.createElement("button");
+    del.className = "ghost danger";
+    del.textContent = "Удалить";
+    del.onclick = async () => {
+      try {
+        await api("/admin/ui/rem/squads/delete", { squad_id: s.id });
+        setStatus("Сквад удалён");
+        await loadRemSquads();
+      } catch (e) {
+        setStatus(e.message, false);
+      }
+    };
+    row.appendChild(input);
+    row.appendChild(upd);
+    row.appendChild(del);
+    list.appendChild(row);
+  });
   } catch {
     /* ignore */
   }
