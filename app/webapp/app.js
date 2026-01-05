@@ -10,7 +10,7 @@ const el = (id) => document.getElementById(id);
 const mainEl = document.querySelector("main");
 
 function randomId() {
-  if (crypto && crypto.randomUUID) return crypto.randomUUID();
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
   return "xxxxxxx".replace(/x/g, () => Math.floor(Math.random() * 16).toString(16));
 }
 
