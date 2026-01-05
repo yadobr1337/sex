@@ -1,3 +1,4 @@
+// Telegram WebApp helper
 const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 if (tg && tg.ready) tg.ready();
 
@@ -31,14 +32,14 @@ async function api(path, options = {}) {
   return res.json();
 }
 
-function showGate(message, actions = []) {
+function showGate(message, actions) {
   const gate = el("gate");
   const msg = el("gate-message");
   const actionsBox = el("gate-actions");
   if (!gate || !msg || !actionsBox) return;
   msg.innerText = message;
   actionsBox.innerHTML = "";
-  actions.forEach((a) => {
+  (actions || []).forEach(function (a) {
     const btn = document.createElement("button");
     btn.className = a.className || "primary";
     btn.textContent = a.text;
@@ -47,47 +48,42 @@ function showGate(message, actions = []) {
   });
   gate.classList.remove("hidden");
   document.body.classList.add("gate-open");
-  if (mainEl) {
-    mainEl.classList.add("gated");
-  }
+  if (mainEl) mainEl.classList.add("gated");
 }
 
 function hideGate() {
   const gate = el("gate");
   if (gate) gate.classList.add("hidden");
   document.body.classList.remove("gate-open");
-  if (mainEl) {
-    mainEl.classList.remove("gated");
-  }
+  if (mainEl) mainEl.classList.remove("gated");
 }
 
 function renderDevices(devices) {
   const list = el("device-list");
   list.innerHTML = "";
   if (!devices.length) {
-    list.innerHTML = `<div class="label">Пока нет устройств</div>`;
+    list.innerHTML = '<div class="label">Пока нет устройств</div>';
     return;
   }
-  devices.forEach((d, idx) => {
+  devices.forEach(function (d, idx) {
     const item = document.createElement("div");
     item.className = "device-item";
-    item.innerHTML = `
-      <div>
-        <div class="value">${d.label}</div>
-        <div class="label">${d.fingerprint.slice(0, 8)} - ${new Date(d.last_seen).toLocaleDateString()}</div>
-      </div>
-      ${idx === 0 ? "" : `<button class="ghost danger" data-id="${d.id}">Удалить</button>`}
-    `;
+    item.innerHTML =
+      '<div>' +
+      '<div class="value">' + d.label + '</div>' +
+      '<div class="label">' + d.fingerprint.slice(0, 8) + ' - ' + new Date(d.last_seen).toLocaleDateString() + '</div>' +
+      '</div>' +
+      (idx === 0 ? "" : '<button class="ghost danger" data-id="' + d.id + '">Удалить</button>');
     const btn = item.querySelector("button");
-    if (btn) btn.onclick = () => deleteDevice(d.id);
+    if (btn) btn.onclick = function () { deleteDevice(d.id); };
     list.appendChild(item);
   });
 }
 
 async function loadState() {
   state = await api("/api/state");
-  el("balance").innerText = `${state.balance} руб`;
-  el("days").innerText = `~${state.estimated_days} д`;
+  el("balance").innerText = state.balance + " руб";
+  el("days").innerText = "~" + state.estimated_days + " д";
   el("devices-allowed").innerText = state.allowed_devices || 1;
   renderDevices(state.devices);
   el("wg-link").innerText = state.link || "—";
@@ -107,25 +103,24 @@ async function loadState() {
 
 async function topup() {
   const init = (tg && tg.initData) || localStorage.getItem("initData") || "";
-  const url = `/static/topup.html${init ? `?init=${encodeURIComponent(init)}` : ""}`;
+  const url = "/static/topup.html" + (init ? "?init=" + encodeURIComponent(init) : "");
   window.location.href = url;
 }
 
 async function addDevice() {
   try {
     const fp = randomId();
-    const label = `Устройство ${state && state.devices && state.devices.length ? state.devices.length + 1 : 1}`;
-    await api("/api/device", { method: "POST", body: { fingerprint: fp, label } });
+    const label = "Устройство " + (state && state.devices && state.devices.length ? state.devices.length + 1 : 1);
+    await api("/api/device", { method: "POST", body: { fingerprint: fp, label: label } });
     await loadState();
   } catch (e) {
-    console.error(e);
     if (tg && tg.showPopup) tg.showPopup({ message: e.message || "Ошибка при добавлении устройства" });
   }
 }
 
 async function deleteDevice(id) {
   try {
-    await api(`/api/device/${id}`, { method: "DELETE" });
+    await api("/api/device/" + id, { method: "DELETE" });
     await loadState();
   } catch (e) {
     console.error(e);
@@ -133,7 +128,7 @@ async function deleteDevice(id) {
 }
 
 function copyLink() {
-  navigator.clipboard.writeText((state && state.link) || "").then(() => {
+  navigator.clipboard.writeText((state && state.link) || "").then(function () {
     if (tg && tg.showPopup) tg.showPopup({ message: "Скопировано" });
   });
 }
@@ -150,21 +145,23 @@ const connectBtnInit = el("connect-btn");
 if (connectBtnInit) connectBtnInit.onclick = openLink;
 
 async function runGate() {
+  // init user
   try {
-    await api("/api/init", { method: "POST", body: { initData } });
+    await api("/api/init", { method: "POST", body: { initData: initData } });
   } catch (e) {
     showGate("Не удалось инициализировать сеанс. Попробуйте ещё раз.", [
-      { text: "Повторить", onClick: () => runGate().catch(() => {}) },
+      { text: "Повторить", onClick: function () { runGate().catch(function () { }); } },
     ]);
     return;
   }
 
+  // gate check
   let gate;
   try {
     gate = await api("/api/gate");
   } catch (e) {
     showGate("Не удалось проверить подписку. Повторите попытку.", [
-      { text: "Повторить", onClick: () => runGate().catch(() => {}) },
+      { text: "Повторить", onClick: function () { runGate().catch(function () { }); } },
     ]);
     return;
   }
@@ -173,16 +170,16 @@ async function runGate() {
     showGate("Подпишитесь на наш канал, чтобы продолжить.", [
       {
         text: "Подписаться",
-        onClick: () => {
+        onClick: function () {
           if (gate.required_channel) {
-            window.open(`https://t.me/${gate.required_channel.replace("@", "")}`, "_blank");
+            window.open("https://t.me/" + gate.required_channel.replace("@", ""), "_blank");
           }
         },
       },
       {
         text: "Проверить",
         className: "ghost",
-        onClick: () => runGate().catch(() => {}),
+        onClick: function () { runGate().catch(function () { }); },
       },
     ]);
     return;
@@ -196,16 +193,16 @@ async function runGate() {
           ? {
               text: "Политика",
               className: "ghost",
-              onClick: () => window.open(gate.policy_url, "_blank"),
+              onClick: function () { window.open(gate.policy_url, "_blank"); },
             }
           : null,
         {
           text: "Согласен",
-          onClick: () => {
+          onClick: function () {
             policyAccepted = true;
             localStorage.setItem("policyAccepted", "1");
             hideGate();
-            loadState().catch(() => {});
+            loadState().catch(function () { });
           },
         },
       ].filter(Boolean)
@@ -219,21 +216,21 @@ async function runGate() {
   } catch (e) {
     if (e.message === "subscribe_required") {
       policyAccepted = localStorage.getItem("policyAccepted") === "1";
-      runGate().catch(() => {});
+      runGate().catch(function () { });
       return;
     }
     throw e;
   }
 
   if (stateTimer) clearInterval(stateTimer);
-  stateTimer = setInterval(() => {
-    loadState().catch((err) => {
+  stateTimer = setInterval(function () {
+    loadState().catch(function (err) {
       if (err.message === "subscribe_required") {
         policyAccepted = localStorage.getItem("policyAccepted") === "1";
-        runGate().catch(() => {});
+        runGate().catch(function () { });
       }
     });
   }, 10000);
 }
 
-runGate().catch((e) => console.error(e));
+runGate().catch(function (e) { console.error(e); });
