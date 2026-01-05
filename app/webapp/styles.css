@@ -1,13 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&display=swap');
 
 :root {
-  --bg: #0f0c0c;
+  --bg: #0c0032;
   --card: rgba(255, 255, 255, 0.05);
-  --text: #fefefe;
-  --muted: #cfcfcf;
-  --orange: #ff7a18;
-  --yellow: #f1c40f;
-  --red: #ff3b30;
+  --text: #f5f7ff;
+  --muted: #c2c8ff;
+  --primary: #3500d3;
+  --primary-dark: #240090;
+  --accent: #190061;
+  --accent-bright: #5a54ff;
 }
 
 * {
@@ -33,10 +34,10 @@ body {
 .background {
   position: fixed;
   inset: 0;
-  background: radial-gradient(circle at 20% 20%, rgba(255, 122, 24, 0.25), transparent 35%),
-    radial-gradient(circle at 80% 0%, rgba(255, 59, 48, 0.25), transparent 35%),
-    radial-gradient(circle at 60% 80%, rgba(241, 196, 15, 0.25), transparent 35%),
-    linear-gradient(145deg, #1d0b0b, #111);
+  background: radial-gradient(circle at 20% 20%, rgba(53, 0, 211, 0.28), transparent 35%),
+    radial-gradient(circle at 80% 0%, rgba(36, 0, 144, 0.24), transparent 35%),
+    radial-gradient(circle at 60% 80%, rgba(25, 0, 97, 0.32), transparent 35%),
+    linear-gradient(145deg, #0c0032, #190061 55%, #0c0032);
   filter: blur(0px);
   z-index: -1;
 }
@@ -66,7 +67,7 @@ body {
   width: 160px;
   height: 160px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 59, 48, 0.35), rgba(255, 59, 48, 0.05));
+  background: radial-gradient(circle, rgba(53, 0, 211, 0.35), rgba(36, 0, 144, 0.06));
   animation: pulse 3s infinite;
   filter: blur(6px);
 }
@@ -146,15 +147,15 @@ body {
 }
 
 .primary {
-  background: linear-gradient(135deg, var(--orange), var(--red));
-  box-shadow: 0 10px 30px rgba(255, 122, 24, 0.35);
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  box-shadow: 0 10px 30px rgba(53, 0, 211, 0.35);
 }
 
 .accent {
   width: 100%;
-  background: linear-gradient(135deg, var(--yellow), var(--orange));
-  color: #0f0c0c;
-  box-shadow: 0 10px 30px rgba(241, 196, 15, 0.35);
+  background: linear-gradient(135deg, var(--accent-bright), var(--primary));
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(90, 84, 255, 0.35);
 }
 
 .ghost {
