@@ -80,14 +80,14 @@ async function loadRemSquads() {
     data.forEach((s) => {
       const row = document.createElement("div");
       row.className = "server-item";
-      row.innerHTML = <div><div class="value"></div><div class="label"></div><div class="label">???????: </div></div>;
+      row.innerHTML = `<div><div class="value">${s.name}</div><div class="label">${s.uuid}</div><div class="label">Ёмкость: ${s.capacity}</div></div>`;
       const del = document.createElement("button");
       del.className = "ghost danger";
-      del.textContent = "???????";
+      del.textContent = "Удалить";
       del.onclick = async () => {
         try {
           await api("/admin/ui/rem/squads/delete", { squad_id: s.id });
-          setStatus("????? ??????");
+          setStatus("Сквад удалён");
           await loadRemSquads();
         } catch (e) {
           setStatus(e.message, false);
