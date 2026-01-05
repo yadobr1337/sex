@@ -100,8 +100,16 @@ async def pick_rem_squad(session: AsyncSession) -> Optional[models.RemSquad]:
 async def check_subscription(user: models.User) -> bool:
     if not settings.required_channel:
         return True
+    channel = settings.required_channel.strip()
+    # normalize: https://t.me/xxx -> xxx, t.me/xxx -> xxx, add @ if missing for usernames
+    if channel.startswith("https://"):
+        channel = channel.split("/")[-1]
+    if channel.startswith("t.me/"):
+        channel = channel.split("/")[-1]
+    if channel and channel[0].isalpha() and not channel.startswith("@") and not channel.startswith("-100"):
+        channel = f"@{channel}"
     try:
-        member = await bot.get_chat_member(settings.required_channel, int(user.telegram_id))
+        member = await bot.get_chat_member(channel, int(user.telegram_id))
         return member.status in {"member", "administrator", "creator"}
     except Exception:
         return False
@@ -574,9 +582,17 @@ async def init_user(
 @app.get("/api/gate")
 async def gate(user: models.User = Depends(get_current_user)):
     subscribed = await check_subscription(user)
+    channel = settings.required_channel or ""
+    ch = channel.strip()
+    if ch.startswith("https://"):
+        ch = ch.split("/")[-1]
+    if ch.startswith("t.me/"):
+        ch = ch.split("/")[-1]
+    if ch and ch[0].isalpha() and not ch.startswith("@") and not ch.startswith("-100"):
+        ch = f"@{ch}"
     return {
         "subscribed": subscribed,
-        "required_channel": settings.required_channel,
+        "required_channel": ch,
         "policy_url": settings.policy_url,
     }
 
