@@ -25,6 +25,10 @@ body {
 .gate-open {
   overflow: hidden;
 }
+.gated {
+  filter: blur(2px);
+  pointer-events: none;
+}
 
 .background {
   position: fixed;
@@ -263,6 +267,7 @@ body {
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  padding: 20px;
 }
 .gate.hidden {
   display: none;

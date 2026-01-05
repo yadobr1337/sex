@@ -1,19 +1,25 @@
-const tg = window.Telegram?.WebApp;
-if (tg) tg.ready();
+const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+if (tg && tg.ready) tg.ready();
 
-let initData = tg?.initData || localStorage.getItem("initData") || "";
+let initData = (tg && tg.initData) || localStorage.getItem("initData") || "";
 let state = null;
 let policyAccepted = localStorage.getItem("policyAccepted") === "1";
 let stateTimer = null;
 
 const el = (id) => document.getElementById(id);
+const mainEl = document.querySelector("main");
+
+function randomId() {
+  if (crypto && crypto.randomUUID) return crypto.randomUUID();
+  return "xxxxxxx".replace(/x/g, () => Math.floor(Math.random() * 16).toString(16));
+}
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
     method: options.method || "GET",
     headers: {
       "Content-Type": "application/json",
-      "X-Telegram-Init": tg?.initData || initData || "",
+      "X-Telegram-Init": (tg && tg.initData) || initData || "",
       ...(options.headers || {}),
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
@@ -41,12 +47,18 @@ function showGate(message, actions = []) {
   });
   gate.classList.remove("hidden");
   document.body.classList.add("gate-open");
+  if (mainEl) {
+    mainEl.classList.add("gated");
+  }
 }
 
 function hideGate() {
   const gate = el("gate");
   if (gate) gate.classList.add("hidden");
   document.body.classList.remove("gate-open");
+  if (mainEl) {
+    mainEl.classList.remove("gated");
+  }
 }
 
 function renderDevices(devices) {
@@ -85,7 +97,7 @@ async function loadState() {
   el("ios-help").href = state.ios_help_url;
   el("android-help").href = state.android_help_url;
   el("support-link").href = state.support_url;
-  if (tg?.initData) {
+  if (tg && tg.initData) {
     localStorage.setItem("initData", tg.initData);
     initData = tg.initData;
   }
@@ -94,20 +106,20 @@ async function loadState() {
 }
 
 async function topup() {
-  const init = tg?.initData || localStorage.getItem("initData") || "";
+  const init = (tg && tg.initData) || localStorage.getItem("initData") || "";
   const url = `/static/topup.html${init ? `?init=${encodeURIComponent(init)}` : ""}`;
   window.location.href = url;
 }
 
 async function addDevice() {
   try {
-    const fp = crypto.randomUUID();
-    const label = `Устройство ${state?.devices?.length ? state.devices.length + 1 : 1}`;
+    const fp = randomId();
+    const label = `Устройство ${state && state.devices && state.devices.length ? state.devices.length + 1 : 1}`;
     await api("/api/device", { method: "POST", body: { fingerprint: fp, label } });
     await loadState();
   } catch (e) {
     console.error(e);
-    if (tg) tg.showPopup({ message: e.message || "Ошибка при добавлении устройства" });
+    if (tg && tg.showPopup) tg.showPopup({ message: e.message || "Ошибка при добавлении устройства" });
   }
 }
 
@@ -121,13 +133,13 @@ async function deleteDevice(id) {
 }
 
 function copyLink() {
-  navigator.clipboard.writeText(state?.link || "").then(() => {
-    if (tg) tg.showPopup({ message: "Скопировано" });
+  navigator.clipboard.writeText((state && state.link) || "").then(() => {
+    if (tg && tg.showPopup) tg.showPopup({ message: "Скопировано" });
   });
 }
 
 function openLink() {
-  if (!state?.link) return;
+  if (!state || !state.link) return;
   window.location.href = state.link;
 }
 
@@ -207,10 +219,12 @@ async function runGate() {
   } catch (e) {
     if (e.message === "subscribe_required") {
       policyAccepted = localStorage.getItem("policyAccepted") === "1";
-      return runGate();
+      runGate().catch(() => {});
+      return;
     }
     throw e;
   }
+
   if (stateTimer) clearInterval(stateTimer);
   stateTimer = setInterval(() => {
     loadState().catch((err) => {
