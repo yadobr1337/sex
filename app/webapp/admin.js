@@ -16,6 +16,12 @@ async function api(path, body) {
     headers: { "Content-Type": "application/json", ...(token ? { "X-Admin-Token": token } : {}) },
     body: JSON.stringify(body),
   });
+  if (res.status === 401) {
+    token = "";
+    localStorage.removeItem("admin_ui_token");
+    location.reload();
+    throw new Error("Нужен повторный вход");
+  }
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.detail || res.statusText);
@@ -92,6 +98,12 @@ async function loadRemSquads() {
     const res = await fetch("/admin/ui/rem/squads/list", {
       headers: { "Content-Type": "application/json", ...(token ? { "X-Admin-Token": token } : {}) },
     });
+    if (res.status === 401) {
+      token = "";
+      localStorage.removeItem("admin_ui_token");
+      location.reload();
+      return;
+    }
     if (!res.ok) return;
     const data = await res.json();
     const list = el("rem-list");
@@ -167,6 +179,12 @@ async function refreshRemStatus() {
     const res = await fetch("/admin/ui/rem/status", {
       headers: { ...(token ? { "X-Admin-Token": token } : {}) },
     });
+    if (res.status === 401) {
+      token = "";
+      localStorage.removeItem("admin_ui_token");
+      location.reload();
+      return;
+    }
     const data = await res.json();
     const ok = !!data.ok;
     s.classList.add(ok ? "status-ok" : "status-bad");
