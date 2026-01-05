@@ -133,9 +133,22 @@ async def rem_upsert_user(
                 data = await resp.json()
 
         response_data = data.get("response") if isinstance(data, dict) else {}
-        panel_uuid = response_data.get("uuid") or (rem_user.panel_uuid if rem_user else None)
-        short_uuid = response_data.get("shortUuid") or response_data.get("subscriptionUuid")
-        sub_url = response_data.get("subscriptionUrl")
+        user_payload = response_data
+        if isinstance(response_data, dict) and "users" in response_data:
+            users_list = response_data.get("users") or []
+            if users_list:
+                user_payload = users_list[0]
+
+        panel_uuid = None
+        short_uuid = None
+        sub_url = None
+
+        if isinstance(user_payload, dict):
+            panel_uuid = user_payload.get("uuid") or user_payload.get("id")
+            short_uuid = user_payload.get("shortUuid") or user_payload.get("subscriptionUuid")
+            sub_url = user_payload.get("subscriptionUrl")
+        if panel_uuid is None and rem_user:
+            panel_uuid = rem_user.panel_uuid
 
         if rem_user:
             rem_user.panel_uuid = panel_uuid or rem_user.panel_uuid
