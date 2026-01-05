@@ -137,7 +137,7 @@ function loadState() {
     setTextSmooth("devices-allowed", state.allowed_devices || 1);
     renderDevices(state.devices);
 
-    var placeholderLink = "Пополните баланс для получения ссылки";
+    var placeholderLink = "";
     var linkChanged = prev.link !== state.link;
     if (linkChanged) setUpdating("wg-link", true);
     setTextSmooth("wg-link", state.link || placeholderLink);
