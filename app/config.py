@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     android_help_url: str = "https://telegra.ph/android-vpn-install"
     domain: str = "the1priority.ru"
     price_per_day: float = 10.0
+    rem_base_url: str = ""
+    rem_api_token: str = ""
 
     model_config = {
         "env_file": ".env",

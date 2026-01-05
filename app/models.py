@@ -119,3 +119,25 @@ class MarzbanUser(Base):
     sub_url: Mapped[str] = mapped_column(String(512))
     expires_at: Mapped[Optional[dt.datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=dt.datetime.utcnow)
+
+
+class RemSquad(Base):
+    __tablename__ = "rem_squads"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(64))
+    uuid: Mapped[str] = mapped_column(String(64), unique=True)
+    capacity: Mapped[int] = mapped_column(Integer, default=50)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=dt.datetime.utcnow)
+
+
+class RemUser(Base):
+    __tablename__ = "rem_users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    squad_id: Mapped[int] = mapped_column(ForeignKey("rem_squads.id"))
+    panel_uuid: Mapped[str] = mapped_column(String(64), unique=True)
+    short_uuid: Mapped[Optional[str]] = mapped_column(String(64))
+    subscription_url: Mapped[Optional[str]] = mapped_column(String(512))
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=dt.datetime.utcnow)

@@ -27,7 +27,7 @@ function showPanel() {
   const lb = el("login-block");
   if (lb) lb.remove();
   setStatus("Вы вошли в админку");
-  loadMarzban();
+  loadRemSquads();
   loadPrice();
 }
 
@@ -67,28 +67,28 @@ el("broadcast-btn").onclick = async () => {
   }
 };
 
-async function loadMarzban() {
+async function loadRemSquads() {
   try {
-    const res = await fetch("/admin/ui/marzban/servers/list", {
+    const res = await fetch("/admin/ui/rem/squads/list", {
       headers: { "Content-Type": "application/json", ...(token ? { "X-Admin-Token": token } : {}) },
     });
     if (!res.ok) return;
     const data = await res.json();
-    const list = el("marz-list");
+    const list = el("rem-list");
     if (!list) return;
     list.innerHTML = "";
     data.forEach((s) => {
       const row = document.createElement("div");
       row.className = "server-item";
-      row.innerHTML = `<div><div class="value">${s.name}</div><div class="label">${s.api_url}</div></div>`;
+      row.innerHTML = <div><div class="value"></div><div class="label"></div><div class="label">???????: </div></div>;
       const del = document.createElement("button");
       del.className = "ghost danger";
-      del.textContent = "Удалить";
+      del.textContent = "???????";
       del.onclick = async () => {
         try {
-          await api("/admin/ui/marzban/servers/delete", { server_id: s.id });
-          setStatus("Marzban сервер удалён");
-          await loadMarzban();
+          await api("/admin/ui/rem/squads/delete", { squad_id: s.id });
+          setStatus("????? ??????");
+          await loadRemSquads();
         } catch (e) {
           setStatus(e.message, false);
         }
@@ -101,16 +101,15 @@ async function loadMarzban() {
   }
 }
 
-el("add-marz").onclick = async () => {
-  const name = el("marz-name").value.trim();
-  const api_url = el("marz-api-url").value.trim();
-  const api_token = el("marz-api-token").value.trim();
-  const capacity = parseInt(el("marz-capacity").value, 10) || 10;
-  if (!name || !api_url || !api_token) return setStatus("Заполните имя, URL и токен", false);
+el("add-rem").onclick = async () => {
+  const name = el("rem-name").value.trim();
+  const uuid = el("rem-uuid").value.trim();
+  const capacity = parseInt(el("rem-capacity").value, 10) || 50;
+  if (!name || !uuid) return setStatus("????? ???????? ? UUID ??????", false);
   try {
-    await api("/admin/ui/marzban/servers", { name, api_url, api_token, capacity });
-    setStatus("Marzban сервер добавлен");
-    await loadMarzban();
+    await api("/admin/ui/rem/squads", { name, uuid, capacity });
+    setStatus("????? ????????");
+    await loadRemSquads();
   } catch (e) {
     setStatus(e.message, false);
   }

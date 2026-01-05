@@ -39,6 +39,8 @@ from .schemas import (
     AdminPrice,
     AdminMarzbanServer,
     AdminMarzbanServerDelete,
+    AdminRemSquad,
+    AdminRemSquadDelete,
     DeviceRequest,
     PaymentRequest,
     SubscriptionRequest,
@@ -68,6 +70,84 @@ async def set_price(session: AsyncSession, value: float) -> float:
         session.add(models.AppSetting(key="price_per_day", value=str(value)))
     await session.commit()
     return value
+
+
+def get_rem_config() -> tuple[str, str]:
+    if not settings.rem_base_url or not settings.rem_api_token:
+        raise HTTPException(status_code=503, detail="Remnawave API is not configured")
+    return settings.rem_base_url.rstrip("/"), settings.rem_api_token
+
+
+async def pick_rem_squad(session: AsyncSession) -> Optional[models.RemSquad]:
+    squads = list((await session.scalars(select(models.RemSquad))).all())
+    if not squads:
+        return None
+    for squad in squads:
+        used = await session.scalar(select(func.count(models.RemUser.id)).where(models.RemUser.squad_id == squad.id))
+        if (used or 0) < squad.capacity:
+            return squad
+    return None
+
+
+async def rem_upsert_user(
+    session: AsyncSession, user: models.User, devices: int, expires_at: datetime
+) -> tuple[str, Optional[str], Optional[str]]:
+    base_url, token = get_rem_config()
+    rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == user.id))
+    squad = None
+    if rem_user:
+        squad = await session.get(models.RemSquad, rem_user.squad_id)
+    if not squad:
+        squad = await pick_rem_squad(session)
+    if not squad:
+        raise HTTPException(status_code=503, detail="Нет свободных Remnawave сквадов")
+
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    payload = {
+        "username": f"tg{user.telegram_id}",
+        "expireAt": expires_at.replace(microsecond=0).isoformat() + "Z",
+        "hwidDeviceLimit": devices,
+        "activeInternalSquads": [squad.uuid],
+        "telegramId": int(user.telegram_id) if str(user.telegram_id).isdigit() else None,
+        "description": f"TG {user.telegram_id}",
+    }
+
+    async with aiohttp.ClientSession() as http:
+        if rem_user and rem_user.panel_uuid:
+            payload["uuid"] = rem_user.panel_uuid
+            async with http.patch(f"{base_url}/api/users", json=payload, headers=headers) as resp:
+                if resp.status not in (200, 201, 204):
+                    detail = await resp.text()
+                    raise HTTPException(status_code=503, detail=f"Remnawave update failed: {detail}")
+                data = await resp.json()
+        else:
+            async with http.post(f"{base_url}/api/users", json=payload, headers=headers) as resp:
+                if resp.status not in (200, 201, 204):
+                    detail = await resp.text()
+                    raise HTTPException(status_code=503, detail=f"Remnawave create failed: {detail}")
+                data = await resp.json()
+
+        response_data = data.get("response") if isinstance(data, dict) else {}
+        panel_uuid = response_data.get("uuid") or (rem_user.panel_uuid if rem_user else None)
+        short_uuid = response_data.get("shortUuid") or response_data.get("subscriptionUuid")
+        sub_url = response_data.get("subscriptionUrl")
+
+        if rem_user:
+            rem_user.panel_uuid = panel_uuid or rem_user.panel_uuid
+            rem_user.short_uuid = short_uuid or rem_user.short_uuid
+            rem_user.subscription_url = sub_url or rem_user.subscription_url
+            rem_user.squad_id = squad.id
+        else:
+            rem_user = models.RemUser(
+                user_id=user.id,
+                squad_id=squad.id,
+                panel_uuid=panel_uuid or "",
+                short_uuid=short_uuid,
+                subscription_url=sub_url,
+            )
+            session.add(rem_user)
+
+        return panel_uuid or "", short_uuid, sub_url
 
 
 
@@ -257,12 +337,8 @@ async def marzban_upsert_client(
         "ips": max_devices,
     }
     async with aiohttp.ClientSession() as http:
-        create_url = f"{base}/api/admin/user"
-        async with http.post(create_url, json=payload, headers=headers) as resp:
-            if resp.status not in (200, 201, 204, 409):
-                detail = await resp.text()
-                raise HTTPException(status_code=503, detail=f"Marzban create failed: {detail}")
-        update_url = f"{base}/api/admin/user/{username}"
+        # Marzban API: создание/обновление через PUT /api/admin/users/{username}
+        update_url = f"{base}/api/admin/users/{username}"
         async with http.put(update_url, json=payload, headers=headers) as resp:
             if resp.status not in (200, 201, 204):
                 detail = await resp.text()
@@ -378,13 +454,10 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
     price_value = await get_price(session)
     price_per_day_per_device = price_value * device_count if price_value else 0
     estimated_days = int(user.balance / price_per_day_per_device) if price_per_day_per_device else 0
-    # защита от переполнения timedelta при больших балансах
-    estimated_days = min(estimated_days, 3650)  # максимум ~10 лет
-
-    server: Optional[models.MarzbanServer] = None
-    marz_user = await session.scalar(select(models.MarzbanUser).where(models.MarzbanUser.user_id == user.id))
+    estimated_days = min(estimated_days, 3650)
 
     link_value = make_wireguard_link(user.link_slug)
+    server_data: Optional[dict] = None
 
     if estimated_days <= 0:
         user.subscription_end = None
@@ -394,42 +467,16 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
         user.subscription_end = expires_at
         user.allowed_devices = device_count
         user.link_suspended = False
-
         try:
-            if not marz_user:
-                server = await pick_marzban_server(session)
-                if server:
-                    username = f"tg{user.telegram_id}"
-                    sub_url = await marzban_upsert_client(server, username, expires_at, device_count)
-                    marz_user = models.MarzbanUser(
-                        user_id=user.id, server_id=server.id, username=username, sub_url=sub_url, expires_at=expires_at
-                    )
-                    session.add(marz_user)
-                    link_value = sub_url
-            else:
-                server = await session.get(models.MarzbanServer, marz_user.server_id) if marz_user.server_id else None
-                if not server:
-                    server = await pick_marzban_server(session)
-                if server:
-                    marz_user.server_id = server.id
-                    sub_url = await marzban_upsert_client(server, marz_user.username, expires_at, device_count)
-                    marz_user.sub_url = sub_url
-                    marz_user.expires_at = expires_at
-                    link_value = sub_url
+            _, _, sub_url = await rem_upsert_user(session, user, device_count, expires_at)
+            if sub_url:
+                link_value = sub_url
+        except HTTPException:
+            user.link_suspended = True
         except Exception:
-            # если не удалось создать клиента в Marzban, не роняем state
             user.link_suspended = True
 
     await session.commit()
-
-    server_data = None
-    if server:
-        server_data = {
-            "id": getattr(server, "id", None),
-            "name": getattr(server, "name", None),
-            "endpoint": getattr(server, "api_url", None),
-            "capacity": getattr(server, "capacity", None),
-        }
 
     return UserState(
         balance=user.balance,
@@ -448,7 +495,6 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
         price_per_day=price_value,
         estimated_days=estimated_days,
     )
-
 
 @app.post("/api/topup")
 
@@ -1111,6 +1157,35 @@ async def admin_ui_marzban_servers_delete(
 
 
 
+
+
+@app.post("/admin/ui/rem/squads")
+async def admin_ui_rem_squad_create(
+    payload: AdminRemSquad, _: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)
+):
+    squad = models.RemSquad(name=payload.name, uuid=payload.uuid, capacity=payload.capacity)
+    session.add(squad)
+    await session.commit()
+    await session.refresh(squad)
+    return {"id": squad.id, "name": squad.name, "uuid": squad.uuid, "capacity": squad.capacity}
+
+
+@app.get("/admin/ui/rem/squads/list")
+async def admin_ui_rem_squad_list(_: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)):
+    squads = (await session.scalars(select(models.RemSquad))).all()
+    return [{"id": s.id, "name": s.name, "uuid": s.uuid, "capacity": s.capacity} for s in squads]
+
+
+@app.post("/admin/ui/rem/squads/delete")
+async def admin_ui_rem_squad_delete(
+    payload: AdminRemSquadDelete, _: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)
+):
+    squad = await session.get(models.RemSquad, payload.squad_id)
+    if not squad:
+        raise HTTPException(status_code=404, detail="Not found")
+    await session.delete(squad)
+    await session.commit()
+    return {"ok": True}
 @app.post("/admin/ui/servers/update")
 
 async def admin_ui_servers_update(

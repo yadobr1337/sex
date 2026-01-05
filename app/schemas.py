@@ -103,6 +103,16 @@ class AdminPrice(BaseModel):
     price: int
 
 
+class AdminRemSquad(BaseModel):
+    name: str
+    uuid: str
+    capacity: int = 50
+
+
+class AdminRemSquadDelete(BaseModel):
+    squad_id: int
+
+
 class MarzbanServerOut(BaseModel):
     id: int
     name: str
