@@ -521,6 +521,12 @@ async def init_user(
 async def state(user: models.User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
     tariffs = []
     devices = (await session.scalars(select(models.Device).where(models.Device.user_id == user.id))).all()
+    if not devices:
+        default_dev = models.Device(user_id=user.id, fingerprint=new_slug(), label="Устройство 1")
+        session.add(default_dev)
+        await session.commit()
+        await session.refresh(default_dev)
+        devices = [default_dev]
 
     device_count = len(devices) or 1
     price_value = await get_price(session)
