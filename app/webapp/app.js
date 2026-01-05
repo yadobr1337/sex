@@ -5,6 +5,7 @@ const initData = tg?.initData || localStorage.getItem("initData") || "";
 let state = null;
 
 const el = (id) => document.getElementById(id);
+let stateTimer = null;
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
@@ -30,17 +31,18 @@ function renderDevices(devices) {
     list.innerHTML = `<div class="label">Пока нет устройств</div>`;
     return;
   }
-  devices.forEach((d) => {
+  devices.forEach((d, idx) => {
     const item = document.createElement("div");
     item.className = "device-item";
     item.innerHTML = `
       <div>
         <div class="value">${d.label}</div>
-        <div class="label">${d.fingerprint.slice(0, 8)} · ${new Date(d.last_seen).toLocaleDateString()}</div>
+        <div class="label">${d.fingerprint.slice(0, 8)} - ${new Date(d.last_seen).toLocaleDateString()}</div>
       </div>
-      <button class="ghost danger" data-id="${d.id}">Удалить</button>
+      ${idx === 0 ? "" : `<button class="ghost danger" data-id="${d.id}">Удалить</button>`}
     `;
-    item.querySelector("button").onclick = () => deleteDevice(d.id);
+    const btn = item.querySelector("button");
+    if (btn) btn.onclick = () => deleteDevice(d.id);
     list.appendChild(item);
   });
 }
@@ -111,4 +113,10 @@ if (connectBtnInit) connectBtnInit.onclick = openLink;
 
 api("/api/init", { method: "POST", body: { initData } })
   .then(loadState)
+  .then(() => {
+    if (stateTimer) clearInterval(stateTimer);
+    stateTimer = setInterval(() => {
+      loadState().catch(() => {});
+    }, 10000);
+  })
   .catch((e) => console.error(e));
