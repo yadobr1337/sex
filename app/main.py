@@ -72,10 +72,15 @@ async def set_price(session: AsyncSession, value: float) -> float:
     return value
 
 
-def get_rem_config() -> tuple[str, str]:
+def get_rem_config() -> tuple[str, str, str]:
     if not settings.rem_base_url or not settings.rem_api_token:
         raise HTTPException(status_code=503, detail="Remnawave API is not configured")
-    return settings.rem_base_url.rstrip("/"), settings.rem_api_token
+    base = settings.rem_base_url.rstrip("/")
+    # Если передан URL с /api на конце — убираем, чтобы не было /api/api/...
+    if base.lower().endswith("/api"):
+        base = base[:-4]
+    base_api = f"{base}/api"
+    return base, base_api, settings.rem_api_token
 
 
 async def pick_rem_squad(session: AsyncSession) -> Optional[models.RemSquad]:
@@ -92,7 +97,7 @@ async def pick_rem_squad(session: AsyncSession) -> Optional[models.RemSquad]:
 async def rem_upsert_user(
     session: AsyncSession, user: models.User, devices: int, expires_at: datetime
 ) -> tuple[str, Optional[str], Optional[str]]:
-    base_url, token = get_rem_config()
+    base_url, base_api, token = get_rem_config()
     rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == user.id))
     squad = None
     if rem_user:
@@ -115,13 +120,13 @@ async def rem_upsert_user(
     async with aiohttp.ClientSession() as http:
         if rem_user and rem_user.panel_uuid:
             payload["uuid"] = rem_user.panel_uuid
-            async with http.patch(f"{base_url}/api/users", json=payload, headers=headers) as resp:
+            async with http.patch(f"{base_api}/users", json=payload, headers=headers) as resp:
                 if resp.status not in (200, 201, 204):
                     detail = await resp.text()
                     raise HTTPException(status_code=503, detail=f"Remnawave update failed: {detail}")
                 data = await resp.json()
         else:
-            async with http.post(f"{base_url}/api/users", json=payload, headers=headers) as resp:
+            async with http.post(f"{base_api}/users", json=payload, headers=headers) as resp:
                 if resp.status not in (200, 201, 204):
                     detail = await resp.text()
                     raise HTTPException(status_code=503, detail=f"Remnawave create failed: {detail}")
@@ -1125,8 +1130,8 @@ async def admin_ui_servers_delete(
 
 @app.get("/admin/ui/rem/status")
 async def admin_ui_rem_status(_: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)):
-    base_url, token = get_rem_config()
-    url = f"{base_url}/api/system/health"
+    base, base_api, token = get_rem_config()
+    url = f"{base_api}/system/health"
     headers = {"Authorization": f"Bearer {token}"}
     try:
         async with aiohttp.ClientSession() as http:
