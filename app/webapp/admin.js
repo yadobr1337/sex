@@ -60,10 +60,16 @@ el("save-creds").onclick = async () => {
 
 el("broadcast-btn").onclick = async () => {
   const message = el("broadcast-text").value.trim();
+  const photo = el("broadcast-photo")?.value.trim();
   if (!message) return setStatus("Пустое сообщение", false);
   try {
-    await api("/admin/ui/broadcast", { message });
-    setStatus("Рассылка отправлена");
+    if (photo) {
+      await api("/admin/ui/broadcast_photo", { message, photo_url: photo });
+      setStatus("Рассылка с фото отправлена");
+    } else {
+      await api("/admin/ui/broadcast", { message });
+      setStatus("Рассылка отправлена");
+    }
   } catch (e) {
     setStatus(e.message, false);
   }

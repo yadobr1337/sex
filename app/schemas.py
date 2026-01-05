@@ -65,6 +65,11 @@ class AdminBroadcast(BaseModel):
     message: str
 
 
+class AdminBroadcastPhoto(BaseModel):
+    message: str
+    photo_url: str
+
+
 class AdminBan(BaseModel):
     telegram_id: Optional[str] = None
     username: Optional[str] = None

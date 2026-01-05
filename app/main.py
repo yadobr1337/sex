@@ -30,6 +30,7 @@ from .schemas import (
     AdminBalance,
     AdminBan,
     AdminBroadcast,
+    AdminBroadcastPhoto,
     AdminServer,
     AdminServerDelete,
     AdminServerUpdate,
@@ -520,7 +521,13 @@ async def init_user(
 @app.get("/api/state", response_model=UserState)
 async def state(user: models.User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
     tariffs = []
-    devices = (await session.scalars(select(models.Device).where(models.Device.user_id == user.id))).all()
+    devices = (
+        await session.scalars(
+            select(models.Device)
+            .where(models.Device.user_id == user.id)
+            .order_by(models.Device.id)
+        )
+    ).all()
     if not devices:
         default_dev = models.Device(user_id=user.id, fingerprint=new_slug(), label="Устройство 1")
         session.add(default_dev)
@@ -1135,6 +1142,28 @@ async def admin_ui_broadcast(
             continue
 
     return {"sent": len(users)}
+
+
+@app.post("/admin/ui/broadcast_photo")
+async def admin_ui_broadcast_photo(
+    payload: AdminBroadcastPhoto,
+    _: str = Depends(admin_ui_guard),
+    session: AsyncSession = Depends(get_session),
+):
+    users = (await session.scalars(select(models.User))).all()
+    sent = 0
+    for item in users:
+        try:
+            await bot.send_photo(
+                int(item.telegram_id),
+                payload.photo_url,
+                caption=payload.message or None,
+                reply_markup=webapp_keyboard(),
+            )
+            sent += 1
+        except Exception:
+            continue
+    return {"sent": sent}
 
 
 
