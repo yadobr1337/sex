@@ -149,6 +149,11 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
     rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == user.id))
     panel_uuid_current = rem_user.panel_uuid if rem_user else ""
     short_uuid_current = rem_user.short_uuid if rem_user else ""
+    prev_suspended = user.link_suspended
+    prev_days = None
+    if user.subscription_end:
+        delta = user.subscription_end - now_utc()
+        prev_days = math.ceil(delta.total_seconds() / 86400)
 
     # Если пользователь забанен — сразу блокируем доступ и выходим
     if user.banned:
@@ -187,12 +192,11 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
         except Exception:
             pass
         # уведомление о паузе подписки
-        if user.telegram_id:
-            support_hint = f" Напишите {settings.support_username}." if settings.support_username else ""
+        if user.telegram_id and not prev_suspended:
             try:
                 await bot.send_message(
                     int(user.telegram_id),
-                    f"Подписка приостановлена — баланс закончился. Пополните баланс, чтобы возобновить.{support_hint}",
+                    "Подписка приостановлена — баланс закончился. Пополните баланс, чтобы возобновить.",
                     reply_markup=webapp_keyboard(),
                 )
             except Exception:
@@ -218,15 +222,18 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
             link_value = ""
         # уведомление о скором окончании
         if user.telegram_id and 0 < estimated_days <= 3:
-            support_hint = f" Напишите {settings.support_username}." if settings.support_username else ""
-            try:
-                await bot.send_message(
-                    int(user.telegram_id),
-                    "Извините, у вас осталось 3 дня подписки. Пополните баланс, чтобы продолжить." + support_hint,
-                    reply_markup=webapp_keyboard(),
-                )
-            except Exception:
-                pass
+            send_warn = True
+            if prev_days is not None and prev_days <= 3:
+                send_warn = False
+            if send_warn:
+                try:
+                    await bot.send_message(
+                        int(user.telegram_id),
+                        "Извините, у вас осталось менее 3 дней подписки. Пополните баланс, чтобы продолжить.",
+                        reply_markup=webapp_keyboard(),
+                    )
+                except Exception:
+                    pass
 
     await session.commit()
     return {
