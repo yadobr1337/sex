@@ -90,7 +90,7 @@ body {
   position: relative;
   z-index: 1;
   text-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-  animation: none;
+  animation: vibrate 2.6s infinite ease-in-out;
 }
 
 .tagline {
@@ -126,6 +126,7 @@ body {
   font-size: 20px;
   font-weight: 700;
   margin-top: 4px;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .section-title {
@@ -227,6 +228,7 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 14px;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .device-list {
@@ -256,6 +258,27 @@ body {
   background: rgba(255, 59, 48, 0.12);
   color: #ffd1cc;
   border: 1px solid rgba(255, 59, 48, 0.3);
+}
+
+.fade-update {
+  opacity: 0;
+  transform: translateY(4px);
+}
+.fade-update.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes vibrate {
+  0%, 100% { transform: translateX(0) scale(1); }
+  12% { transform: translateX(-1px) rotate(-0.5deg); }
+  24% { transform: translateX(1px) rotate(0.5deg); }
+  36% { transform: translateX(-1px) rotate(-0.5deg); }
+  48% { transform: translateX(1px) rotate(0.5deg); }
+  60% { transform: translateX(0) scale(1.02); }
+  72% { transform: translateX(-0.5px) rotate(-0.3deg); }
+  84% { transform: translateX(0.5px) rotate(0.3deg); }
+  96% { transform: translateX(0) scale(1); }
 }
 
 /* Gate overlay */
@@ -298,6 +321,33 @@ body {
 }
 .gate-actions button {
   flex: 1 1 auto;
+}
+
+.user-info-card {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.user-info-card .line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.user-info-card .line:last-child {
+  margin-bottom: 0;
+}
+.user-info-card .label {
+  color: var(--muted);
+}
+.user-info-card .value {
+  color: var(--text);
+  font-weight: 600;
+  word-break: break-all;
 }
 
 .helpers {

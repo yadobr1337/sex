@@ -248,18 +248,17 @@ if (infoBtn) {
     if (!body) return setStatus("Укажите пользователя", false);
     try {
       const info = await api("/admin/ui/userinfo", body);
-      if (infoBlock)
-        infoBlock.innerText =
-          "Баланс: " +
-          info.balance +
-          " | Дата: " +
-          (info.subscription_end ? new Date(info.subscription_end).toLocaleString() : "нет") +
-          " | Устр: " +
-          info.allowed_devices +
-          " (актив: " +
-          info.devices +
-          ")" +
-          (info.banned ? " | БАН" : "");
+      if (infoBlock) {
+        const subDate = info.subscription_end ? new Date(info.subscription_end).toLocaleString() : "нет";
+        const link = info.link || "—";
+        infoBlock.innerHTML = `
+          <div class="line"><span class="label">Баланс:</span><span class="value">${info.balance} руб</span></div>
+          <div class="line"><span class="label">Подписка до:</span><span class="value">${subDate}</span></div>
+          <div class="line"><span class="label">Устройства:</span><span class="value">${info.allowed_devices} (актив: ${info.devices})</span></div>
+          <div class="line"><span class="label">Статус:</span><span class="value">${info.banned ? "БАН" : "Ок"}</span></div>
+          <div class="line"><span class="label">Ссылка:</span><span class="value">${link}</span></div>
+        `;
+      }
       setStatus("Данные пользователя загружены");
     } catch (e) {
       setStatus(e.message, false);

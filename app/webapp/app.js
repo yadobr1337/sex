@@ -18,6 +18,19 @@ function el(id) {
 }
 var mainEl = document.querySelector("main");
 
+function setTextSmooth(id, text) {
+  var node = el(id);
+  if (!node) return;
+  if (!node.classList.contains("fade-update")) node.classList.add("fade-update");
+  node.classList.remove("show");
+  window.requestAnimationFrame(function () {
+    node.textContent = text;
+    window.requestAnimationFrame(function () {
+      node.classList.add("show");
+    });
+  });
+}
+
 function randomId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
   return "xxxxxxx".replace(/x/g, function () { return Math.floor(Math.random() * 16).toString(16); });
@@ -92,11 +105,11 @@ function renderDevices(devices) {
 function loadState() {
   return api("/api/state").then(function (data) {
     state = data;
-    el("balance").innerText = state.balance + " руб";
-    el("days").innerText = "~" + state.estimated_days + " д";
-    el("devices-allowed").innerText = state.allowed_devices || 1;
+    setTextSmooth("balance", state.balance + " ₽");
+    setTextSmooth("days", "~" + state.estimated_days + " д");
+    setTextSmooth("devices-allowed", state.allowed_devices || 1);
     renderDevices(state.devices);
-    el("wg-link").innerText = state.link || "—";
+    setTextSmooth("wg-link", state.link || "—");
     var connectBtn = el("connect-btn");
     if (connectBtn) connectBtn.disabled = !state.link;
     el("suspended-banner").hidden = !state.link_suspended;

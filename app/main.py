@@ -154,12 +154,10 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
         estimated_days = int(user.balance / cost)
 
     if estimated_days <= 0:
-        # нет денег на сутки — ставим окончание через 10 минут от текущего времени (MSK ~ UTC+3)
-        grace_end = now_utc() + timedelta(minutes=10)
-        user.subscription_end = grace_end
+        user.subscription_end = None
         user.allowed_devices = device_count
         user.link_suspended = True
-        expires_at = grace_end
+        expires_at = now_utc()
         try:
             panel_uuid, short_uuid, _ = await rem_upsert_user(session, user, device_count, expires_at)
             rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == user.id))
@@ -1238,12 +1236,14 @@ async def admin_ui_userinfo(
     device_count = await session.scalar(
         select(func.count(models.Device.id)).where(models.Device.user_id == target.id)
     ) or 0
+    rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == target.id))
     return {
         "balance": target.balance,
         "subscription_end": target.subscription_end,
         "allowed_devices": target.allowed_devices,
         "devices": device_count,
         "banned": target.banned,
+        "link": rem_user.subscription_url if rem_user else None,
     }
 
 
