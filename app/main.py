@@ -117,6 +117,50 @@ async def check_subscription(user: models.User) -> bool:
         return False
 
 
+async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
+    devices_count = await session.scalar(
+        select(func.count(models.Device.id)).where(models.Device.user_id == user.id)
+    ) or 0
+    device_count = max(devices_count, 1)
+    price_value = await get_price(session)
+    cost = price_value * device_count if price_value else 0
+    link_value = ""
+    estimated_days = 0
+
+    if cost > 0:
+        estimated_days = int(user.balance / cost)
+
+    if estimated_days <= 0:
+        user.subscription_end = None
+        user.allowed_devices = device_count
+        user.link_suspended = True
+        expires_at = now_utc()
+        try:
+            await rem_upsert_user(session, user, device_count, expires_at)
+        except Exception:
+            pass
+    else:
+        expires_at = now_utc() + timedelta(days=estimated_days)
+        user.subscription_end = expires_at
+        user.allowed_devices = device_count
+        user.link_suspended = False
+        try:
+            _, _, sub_url = await rem_upsert_user(session, user, device_count, expires_at)
+            if sub_url:
+                link_value = sub_url
+        except Exception:
+            user.link_suspended = True
+            link_value = ""
+
+    await session.commit()
+    return {
+        "link": link_value,
+        "link_suspended": user.link_suspended,
+        "allowed_devices": device_count,
+        "estimated_days": estimated_days,
+    }
+
+
 async def rem_register_hwid(session: AsyncSession, user: models.User, device: models.Device) -> None:
     base_url, base_api, token = get_rem_config()
     rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == user.id))
@@ -618,50 +662,26 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
         await session.refresh(default_dev)
         devices = [default_dev]
 
-    device_count = len(devices) or 1
+    recalculated = await recalc_subscription(session, user)
     price_value = await get_price(session)
-    price_per_day_per_device = price_value * device_count if price_value else 0
-    estimated_days = int(user.balance / price_per_day_per_device) if price_per_day_per_device else 0
-    estimated_days = min(estimated_days, 3650)
-
-    link_value = ""
     server_data: Optional[dict] = None
-
-    if estimated_days <= 0:
-        user.subscription_end = None
-        user.link_suspended = True
-    else:
-        expires_at = now_utc() + timedelta(days=estimated_days)
-        user.subscription_end = expires_at
-        user.allowed_devices = device_count
-        user.link_suspended = False
-        try:
-            _, _, sub_url = await rem_upsert_user(session, user, device_count, expires_at)
-            if sub_url:
-                link_value = sub_url
-        except HTTPException:
-            user.link_suspended = True
-        except Exception:
-            user.link_suspended = True
-
-    await session.commit()
 
     return UserState(
         balance=user.balance,
         subscription_end=user.subscription_end,
-        allowed_devices=user.allowed_devices,
-        link=link_value,
+        allowed_devices=recalculated["allowed_devices"],
+        link=recalculated["link"],
         server=server_data,
         devices=devices,
         tariffs=tariffs,
         banned=user.banned,
-        link_suspended=user.link_suspended,
+        link_suspended=recalculated["link_suspended"],
         ios_help_url=settings.ios_help_url,
         android_help_url=settings.android_help_url,
         support_url=f"https://t.me/{settings.support_username}",
         is_admin=settings.admin_tg_id == str(user.telegram_id),
         price_per_day=price_value,
-        estimated_days=estimated_days,
+        estimated_days=recalculated["estimated_days"],
     )
 
 @app.post("/api/topup")
@@ -1149,10 +1169,8 @@ async def admin_topup(
         raise HTTPException(status_code=404, detail="User not found")
 
     target.balance += payload.amount
-
-    await session.commit()
-
-    return {"ok": True, "balance": target.balance}
+    result = await recalc_subscription(session, target)
+    return {"ok": True, "balance": target.balance, "link_suspended": result["link_suspended"]}
 
 
 @app.post("/admin/ui/debit")
@@ -1167,8 +1185,8 @@ async def admin_ui_debit(
     if payload.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
     target.balance = max(0, target.balance - payload.amount)
-    await session.commit()
-    return {"ok": True, "balance": target.balance}
+    result = await recalc_subscription(session, target)
+    return {"ok": True, "balance": target.balance, "link_suspended": result["link_suspended"]}
 
 
 @app.post("/admin/ui/userinfo")

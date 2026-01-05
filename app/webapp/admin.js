@@ -14,7 +14,7 @@ async function api(path, body) {
   const res = await fetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(token ? { "X-Admin-Token": token } : {}) },
-    body: JSON.stringify(body),
+    body: body ? JSON.stringify(body) : undefined,
   });
   if (res.status === 401) {
     token = "";
