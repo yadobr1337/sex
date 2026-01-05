@@ -108,12 +108,9 @@ async def rem_upsert_user(
         raise HTTPException(status_code=503, detail="Нет свободных Remnawave сквадов")
 
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    expire_str = (
-        expires_at.astimezone(__import__("datetime").timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
+    expire_str = expires_at.astimezone(__import__("datetime").timezone.utc).isoformat(timespec="milliseconds")
+    if expire_str.endswith("+00:00"):
+        expire_str = expire_str[:-6] + "Z"
     payload = {
         "username": f"tg{user.telegram_id}",
         "expireAt": expire_str,
