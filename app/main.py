@@ -117,6 +117,26 @@ async def check_subscription(user: models.User) -> bool:
         return False
 
 
+async def rem_disable_user(panel_uuid: str) -> None:
+    if not panel_uuid:
+        return
+    base_url, base_api, token = get_rem_config()
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    async with aiohttp.ClientSession() as http:
+        async with http.post(f"{base_api}/users/{panel_uuid}/actions/disable", headers=headers) as resp:
+            return
+
+
+async def rem_enable_user(panel_uuid: str) -> None:
+    if not panel_uuid:
+        return
+    base_url, base_api, token = get_rem_config()
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    async with aiohttp.ClientSession() as http:
+        async with http.post(f"{base_api}/users/{panel_uuid}/actions/enable", headers=headers) as resp:
+            return
+
+
 async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
     devices_count = await session.scalar(
         select(func.count(models.Device.id)).where(models.Device.user_id == user.id)
@@ -136,7 +156,8 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
         user.link_suspended = True
         expires_at = now_utc()
         try:
-            await rem_upsert_user(session, user, device_count, expires_at)
+            panel_uuid, _, _ = await rem_upsert_user(session, user, device_count, expires_at)
+            await rem_disable_user(panel_uuid)
         except Exception:
             pass
     else:
@@ -145,7 +166,8 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
         user.allowed_devices = device_count
         user.link_suspended = False
         try:
-            _, _, sub_url = await rem_upsert_user(session, user, device_count, expires_at)
+            panel_uuid, _, sub_url = await rem_upsert_user(session, user, device_count, expires_at)
+            await rem_enable_user(panel_uuid)
             if sub_url:
                 link_value = sub_url
         except Exception:
