@@ -843,15 +843,19 @@ async def create_topup(
 
         Configuration.account_id = settings.yookassa_shop_id
         Configuration.secret_key = settings.yookassa_secret_key
+        amount_value = f"{payload.amount:.2f}"
+        idem_key = str(uuid.uuid4())
 
         payment_response = Payment.create(
             {
-                "amount": {"value": f"{payload.amount}.00", "currency": "RUB"},
+                "amount": {"value": amount_value, "currency": "RUB"},
                 "confirmation": {"type": "redirect", "return_url": f"{settings.webapp_url}?paid={payment.id}"},
+                "capture": True,
                 "payment_method_data": {"type": "sbp"},
                 "description": f"1VPN пополнение #{payment.id}",
                 "metadata": {"payment_id": payment.id},
-            }
+            },
+            idempotency_key=idem_key,
         )
 
         payment.provider_payment_id = payment_response.id
@@ -871,6 +875,9 @@ async def create_topup(
             f" | desc: {getattr(e, 'description', None)}"
             f" | idempotence: {getattr(e, 'idempotence_key', None)}"
         )
+        resp_text = getattr(e, "response", None)
+        if resp_text and hasattr(resp_text, "text"):
+            detail += f" | resp: {resp_text.text}"
         raise HTTPException(status_code=500, detail=detail)
     except Exception as e:
         # вернуть понятную ошибку, чтобы увидеть причину в UI/логах
