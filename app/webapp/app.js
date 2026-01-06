@@ -145,7 +145,19 @@ function loadState() {
 
     var connectBtn = el("connect-btn");
     if (connectBtn) connectBtn.disabled = !state.link;
-    el("suspended-banner").hidden = !state.link_suspended;
+    var suspended = state.link_suspended;
+    var linkRow = el("link-row");
+    if (linkRow) {
+      if (suspended) {
+        linkRow.style.display = "none";
+        linkRow.classList.remove("show");
+      } else {
+        linkRow.style.display = "flex";
+        requestAnimationFrame(function () { linkRow.classList.add("show"); });
+      }
+    }
+    var suspendedBanner = el("suspended-banner");
+    if (suspendedBanner) suspendedBanner.hidden = !suspended;
     el("ios-help").href = state.ios_help_url;
     el("android-help").href = state.android_help_url;
     el("support-link").href = state.support_url;
@@ -155,6 +167,17 @@ function loadState() {
     }
     var openAdmin = document.getElementById("open-admin");
     if (openAdmin) openAdmin.hidden = !state.is_admin;
+    var deviceSection = el("device-section");
+    if (deviceSection) {
+      if (suspended) {
+        deviceSection.style.display = "none";
+      } else {
+        deviceSection.style.display = "block";
+        requestAnimationFrame(function () { deviceSection.classList.add("show"); });
+      }
+    }
+    var devicesAllowed = el("devices-allowed");
+    if (devicesAllowed) setTextSmooth("devices-allowed", state.allowed_devices || 0);
     prev.balance = state.balance;
     prev.link = state.link;
   });
