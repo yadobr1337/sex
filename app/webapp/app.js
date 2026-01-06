@@ -179,13 +179,9 @@ function loadState() {
     }
     var connectBtn = el("connect-btn");
     if (connectBtn) {
-      if (suspended || !state.link) {
-        connectBtn.style.display = "none";
-        connectBtn.disabled = true;
-      } else {
-        connectBtn.style.display = "block";
-        connectBtn.disabled = false;
-      }
+      var showConnect = !suspended && !!state.link;
+      connectBtn.style.display = showConnect ? "inline-flex" : "none";
+      connectBtn.disabled = !showConnect;
     }
     var copyBtn = el("copy-link");
     if (copyBtn) copyBtn.style.display = suspended ? "none" : "inline-flex";
