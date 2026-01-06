@@ -1178,7 +1178,63 @@ async def yookassa_hook(request: Request, session: AsyncSession = Depends(get_se
     return {"ok": True}
 
 
+@app.post("/api/webhooks/cryptobot")
+async def cryptobot_hook(request: Request, session: AsyncSession = Depends(get_session)):
+    """
+    Webhook для Crypto Bot. Ждем update_type = invoice_paid и payload с id платежа (payment.id),
+    который передаем в createInvoice.
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        return {"ok": False}
 
+    update_type = data.get("update_type")
+    status_value = (data.get("status") or data.get("invoice", {}).get("status") or "").lower()
+    payload_id = (
+        data.get("payload")
+        or data.get("invoice_payload")
+        or data.get("invoice", {}).get("payload")
+        or data.get("data", {}).get("payload")
+    )
+    invoice_id = data.get("invoice_id") or data.get("invoice", {}).get("invoice_id")
+
+    if update_type != "invoice_paid" or status_value != "paid" or not payload_id:
+        return {"ok": True}
+
+    try:
+        payment_pk = int(str(payload_id))
+    except ValueError:
+        payment_pk = None
+
+    payment: models.Payment | None = None
+    if payment_pk:
+        payment = await session.get(models.Payment, payment_pk)
+    if not payment and invoice_id:
+        payment = await session.scalar(
+            select(models.Payment).where(models.Payment.provider_payment_id == str(invoice_id))
+        )
+    if not payment or payment.status == "succeeded":
+        return {"ok": True}
+
+    payment.status = "succeeded"
+    if invoice_id and not payment.provider_payment_id:
+        payment.provider_payment_id = str(invoice_id)
+
+    user = await session.get(models.User, payment.user_id)
+    if user:
+        user.balance += payment.amount
+        recalculated = await recalc_subscription(session, user)
+        await bot.send_message(
+            int(user.telegram_id),
+            f"Баланс пополнен на {payment.amount} ₽",
+            reply_markup=webapp_keyboard(),
+        )
+        await session.commit()
+        return {"ok": True, "link_suspended": recalculated.get("link_suspended", True)}
+
+    await session.commit()
+    return {"ok": True}
 
 
 def find_user_query(telegram_id: Optional[str], username: Optional[str]):
