@@ -177,6 +177,16 @@ function loadState() {
         requestAnimationFrame(function () { linkRow.classList.add("show"); });
       }
     }
+    var connectBtn = el("connect-btn");
+    if (connectBtn) {
+      if (suspended || !state.link) {
+        connectBtn.style.display = "none";
+        connectBtn.disabled = true;
+      } else {
+        connectBtn.style.display = "block";
+        connectBtn.disabled = false;
+      }
+    }
     var copyBtn = el("copy-link");
     if (copyBtn) copyBtn.style.display = suspended ? "none" : "inline-flex";
     var suspendedBanner = el("suspended-banner");
