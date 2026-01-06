@@ -30,7 +30,9 @@ async function topup() {
   if (Number.isNaN(amount) || amount < 50) return alert("Минимум 50₽");
   try {
     const data = await api("/api/topup", { method: "POST", body: { amount, provider } });
-    window.open(data.confirmation_url, "_blank");
+    if (data.confirmation_url) {
+      window.location.href = data.confirmation_url;
+    }
   } catch (e) {
     alert(e.message);
   }
