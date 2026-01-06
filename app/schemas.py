@@ -49,6 +49,7 @@ class UserState(BaseModel):
 
 class PaymentRequest(BaseModel):
     amount: int
+    provider: str | None = "sbp"
 
 
 class SubscriptionRequest(BaseModel):

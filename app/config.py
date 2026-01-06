@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     price_per_day: float = 10.0
     rem_base_url: str = ""
     rem_api_token: str = ""
+    crypto_pay_token: str = ""
+    crypto_pay_asset: str = "USDT"
 
     model_config = {
         "env_file": ".env",

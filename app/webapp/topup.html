@@ -21,11 +21,17 @@
     <h1>Пополнение</h1>
     <p class="label">Введите сумму, ₽</p>
     <input id="topup-amount" type="number" min="50" placeholder="Сумма, ₽" />
-    <div class="quick">
+    <div class="quick" id="quick-buttons">
       <button class="ghost" data-amount="300">+300</button>
       <button class="ghost" data-amount="600">+600</button>
       <button class="ghost" data-amount="1200">+1200</button>
     </div>
+    <div class="label">Способ оплаты</div>
+    <div class="quick" id="provider-buttons">
+      <button class="ghost provider-btn active" data-provider="sbp">СБП</button>
+      <button class="ghost provider-btn" data-provider="crypto">CryptoBot</button>
+    </div>
+    <p class="label" id="hint"></p>
     <button class="accent" id="topup-submit">Пополнить баланс</button>
   </div>
 

@@ -2,6 +2,8 @@ const tg = window.Telegram?.WebApp;
 if (tg) tg.ready();
 
 const initData = tg?.initData || new URLSearchParams(window.location.search).get("init") || localStorage.getItem("initData") || "";
+let provider = "sbp";
+let pricePerDay = 10;
 
 const el = (id) => document.getElementById(id);
 
@@ -27,7 +29,7 @@ async function topup() {
   const amount = parseInt(input.value, 10);
   if (Number.isNaN(amount) || amount < 50) return alert("Минимум 50₽");
   try {
-    const data = await api("/api/topup", { method: "POST", body: { amount } });
+    const data = await api("/api/topup", { method: "POST", body: { amount, provider } });
     window.open(data.confirmation_url, "_blank");
   } catch (e) {
     alert(e.message);
@@ -40,7 +42,37 @@ document.querySelectorAll(".quick button").forEach((btn) => {
   };
 });
 
+document.querySelectorAll(".provider-btn").forEach((btn) => {
+  btn.onclick = () => {
+    document.querySelectorAll(".provider-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    provider = btn.dataset.provider;
+    el("hint").textContent = provider === "crypto" ? "Оплата через CryptoBot" : "Оплата через СБП";
+  };
+});
+
+async function loadPrice() {
+  try {
+    const state = await api("/api/state");
+    pricePerDay = state.price_per_day || 10;
+    const month = Math.ceil(pricePerDay * 30);
+    const three = Math.ceil(pricePerDay * 90);
+    const year = Math.ceil(pricePerDay * 365);
+    const buttons = el("quick-buttons")?.querySelectorAll("button");
+    const values = [month, three, year];
+    buttons?.forEach((b, idx) => {
+      b.textContent = "+" + values[idx];
+      b.dataset.amount = values[idx];
+    });
+    el("hint").textContent = provider === "crypto" ? "Оплата через CryptoBot" : "Оплата через СБП";
+  } catch {
+    // ignore
+  }
+}
+
 el("topup-submit").onclick = topup;
 el("back-btn").onclick = () => {
   window.location.href = "/";
 };
+
+loadPrice();

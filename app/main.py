@@ -783,7 +783,8 @@ async def create_topup(
 
 
 
-    payment = models.Payment(user_id=user.id, amount=payload.amount, status="pending")
+    provider = (payload.provider or "sbp").lower()
+    payment = models.Payment(user_id=user.id, amount=payload.amount, status="pending", provider=provider)
 
     session.add(payment)
 
@@ -793,36 +794,63 @@ async def create_topup(
 
 
 
+    # CryptoBot flow
+    if provider == "crypto":
+        if not settings.crypto_pay_token:
+            raise HTTPException(status_code=400, detail="Crypto provider not configured")
+        import aiohttp
+
+        body = {
+            "amount": str(payload.amount),
+            "asset": settings.crypto_pay_asset or "USDT",
+            "description": f"1VPN пополнение #{payment.id}",
+            "payload": str(payment.id),
+        }
+        try:
+            async with aiohttp.ClientSession() as http:
+                async with http.post(
+                    "https://pay.crypt.bot/api/createInvoice",
+                    json=body,
+                    headers={
+                        "Crypto-Pay-API-Token": settings.crypto_pay_token,
+                        "Content-Type": "application/json",
+                    },
+                ) as resp:
+                    data = await resp.json()
+                    if not data.get("ok"):
+                        raise HTTPException(status_code=500, detail="crypto_create_failed")
+                    result = data.get("result") or {}
+                    pay_url = result.get("pay_url")
+                    invoice_id = result.get("invoice_id")
+                    if not pay_url:
+                        raise HTTPException(status_code=500, detail="crypto_create_failed")
+                    payment.provider_payment_id = str(invoice_id or "")
+                    await session.commit()
+                    return {"confirmation_url": pay_url, "payment_id": payment.id}
+        except HTTPException:
+            await session.delete(payment)
+            await session.commit()
+            raise
+        except Exception:
+            await session.delete(payment)
+            await session.commit()
+            raise HTTPException(status_code=500, detail="crypto_create_failed")
+
     # YooKassa payment creation (SBP)
-
     try:
-
         from yookassa import Configuration, Payment
 
-
-
         Configuration.account_id = settings.yookassa_shop_id
-
         Configuration.secret_key = settings.yookassa_secret_key
 
-
-
         payment_response = Payment.create(
-
             {
-
                 "amount": {"value": f"{payload.amount}.00", "currency": "RUB"},
-
                 "confirmation": {"type": "redirect", "return_url": f"{settings.webapp_url}?paid={payment.id}"},
-
                 "payment_method_data": {"type": "sbp"},
-
                 "description": f"1VPN пополнение #{payment.id}",
-
                 "metadata": {"payment_id": payment.id},
-
             }
-
         )
 
         payment.provider_payment_id = payment_response.id
@@ -832,16 +860,9 @@ async def create_topup(
         return {"confirmation_url": payment_response.confirmation.confirmation_url, "payment_id": payment.id}
 
     except Exception:
-
-        # Fallback for demo without valid credentials
-
-        return {
-
-            "confirmation_url": f"https://yoomoney.ru/quickpay/confirm.xml?label={payment.id}",
-
-            "payment_id": payment.id,
-
-        }
+        await session.delete(payment)
+        await session.commit()
+        raise HTTPException(status_code=500, detail="payment_create_failed")
 
 
 

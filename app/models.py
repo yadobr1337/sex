@@ -76,6 +76,7 @@ class Payment(Base):
     amount: Mapped[int] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(32), default="pending")
     provider_payment_id: Mapped[Optional[str]] = mapped_column(String(128))
+    provider: Mapped[str] = mapped_column(String(32), default="sbp")
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=dt.datetime.utcnow)
 
     user: Mapped["User"] = relationship("User", back_populates="payments")
