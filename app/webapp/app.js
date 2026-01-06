@@ -145,7 +145,7 @@ function loadState() {
 
     var connectBtn = el("connect-btn");
     if (connectBtn) connectBtn.disabled = !state.link;
-    var suspended = state.link_suspended || !state.link || state.balance <= 0;
+    var suspended = state.link_suspended || (typeof state.estimated_days === "number" && state.estimated_days <= 0);
     var linkRow = el("link-row");
     if (linkRow) {
       if (suspended) {
