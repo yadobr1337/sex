@@ -145,7 +145,7 @@ function loadState() {
 
     var connectBtn = el("connect-btn");
     if (connectBtn) connectBtn.disabled = !state.link;
-    var suspended = state.link_suspended || !state.link;
+    var suspended = state.link_suspended || !state.link || state.balance <= 0;
     var linkRow = el("link-row");
     if (linkRow) {
       if (suspended) {
@@ -156,6 +156,8 @@ function loadState() {
         requestAnimationFrame(function () { linkRow.classList.add("show"); });
       }
     }
+    var copyBtn = el("copy-link");
+    if (copyBtn) copyBtn.style.display = suspended ? "none" : "inline-flex";
     var suspendedBanner = el("suspended-banner");
     if (suspendedBanner) suspendedBanner.hidden = !suspended;
     el("ios-help").href = state.ios_help_url;
