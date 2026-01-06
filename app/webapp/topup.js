@@ -118,6 +118,5 @@ el("topup-submit").onclick = topup;
 el("back-btn").onclick = () => {
   window.location.href = "/";
 };
-el("history-btn").onclick = showPayments;
 
 loadPrice();
