@@ -46,6 +46,36 @@ async function topup() {
   }
 }
 
+function showPayments() {
+  api("/api/payments")
+    .then((list) => {
+      const backdrop = document.createElement("div");
+      backdrop.className = "modal-backdrop";
+      const card = document.createElement("div");
+      card.className = "modal-card";
+      let html = "<h3>История пополнений</h3>";
+      const success = (list || []).filter((p) => (p.status || "").toLowerCase() === "succeeded");
+      if (!success.length) {
+        html += "<div class='label'>Нет успешных оплат</div>";
+      } else {
+        html += success
+          .map(
+            (p) =>
+              `<div class="line"><span class="label-small">#${p.id}</span><span>${p.amount} ₽, ${p.provider || ""}, ${new Date(
+                p.created_at
+              ).toLocaleString()}</span></div>`
+          )
+          .join("");
+      }
+      html += '<div class="modal-actions"><button class="accent" id="close-payments">Закрыть</button></div>';
+      card.innerHTML = html;
+      backdrop.appendChild(card);
+      document.body.appendChild(backdrop);
+      card.querySelector("#close-payments").onclick = () => backdrop.remove();
+    })
+    .catch((e) => alert(e.message || "Не удалось загрузить историю"));
+}
+
 document.querySelectorAll(".quick button").forEach((btn) => {
   btn.onclick = () => {
     el("topup-amount").value = btn.dataset.amount;
@@ -83,5 +113,6 @@ el("topup-submit").onclick = topup;
 el("back-btn").onclick = () => {
   window.location.href = "/";
 };
+el("history-btn").onclick = showPayments;
 
 loadPrice();

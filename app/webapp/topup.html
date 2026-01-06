@@ -14,6 +14,13 @@
     .provider-btn.active { border-color: var(--accent-bright); box-shadow: 0 0 0 1px rgba(74,63,176,0.6); background: linear-gradient(135deg, var(--accent-bright), var(--primary)); color: #fff; }
     .topup-card input { width:100%; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.05); color:#fff; }
     .topup-card button { width:100%; margin-top:10px; }
+    .history-btn { margin-top: 6px; }
+    .modal-backdrop { position: fixed; inset:0; background: rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index: 50; }
+    .modal-card { background: var(--card); border:1px solid rgba(255,255,255,0.1); padding:16px; border-radius:14px; max-width:420px; width:90%; max-height:80vh; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,0.4); }
+    .modal-card h3 { margin-top:0; }
+    .line { display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.08); font-size:14px; }
+    .line:last-child { border-bottom:none; }
+    .label-small { color: rgba(255,255,255,0.6); }
   </style>
 </head>
 <body>
@@ -33,6 +40,7 @@
     </div>
     <p class="label" id="hint" style="text-align:center"></p>
     <button class="accent" id="topup-submit" type="button">Пополнить баланс</button>
+    <button class="ghost history-btn" id="history-btn" type="button">История пополнений</button>
   </div>
 
   <script src="/static/topup.js"></script>
