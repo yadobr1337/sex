@@ -7,6 +7,15 @@ let pricePerDay = 10;
 
 const el = (id) => document.getElementById(id);
 
+function openPayUrl(url) {
+  if (!url) return;
+  if (tg && tg.openLink) {
+    tg.openLink(url);
+  } else {
+    window.location.href = url;
+  }
+}
+
 async function api(path, options = {}) {
   const res = await fetch(path, {
     method: options.method || "GET",
@@ -30,9 +39,8 @@ async function topup() {
   if (Number.isNaN(amount) || amount < 50) return alert("Минимум 50₽");
   try {
     const data = await api("/api/topup", { method: "POST", body: { amount, provider } });
-    if (data.confirmation_url) {
-      window.location.href = data.confirmation_url;
-    }
+    if (!data.confirmation_url) return alert("Не удалось получить ссылку оплаты");
+    openPayUrl(data.confirmation_url);
   } catch (e) {
     alert(e.message);
   }
