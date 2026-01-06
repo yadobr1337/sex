@@ -49,6 +49,8 @@ async function topup() {
 function showPayments() {
   api("/api/payments")
     .then((list) => {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
       const backdrop = document.createElement("div");
       backdrop.className = "modal-backdrop";
       const card = document.createElement("div");
@@ -71,7 +73,10 @@ function showPayments() {
       card.innerHTML = html;
       backdrop.appendChild(card);
       document.body.appendChild(backdrop);
-      card.querySelector("#close-payments").onclick = () => backdrop.remove();
+      card.querySelector("#close-payments").onclick = () => {
+        document.body.style.overflow = prevOverflow;
+        backdrop.remove();
+      };
     })
     .catch((e) => alert(e.message || "Не удалось загрузить историю"));
 }
