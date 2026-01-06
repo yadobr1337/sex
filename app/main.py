@@ -859,10 +859,16 @@ async def create_topup(
 
         return {"confirmation_url": payment_response.confirmation.confirmation_url, "payment_id": payment.id}
 
-    except Exception:
+    except Exception as e:
+        # вернуть понятную ошибку, чтобы увидеть причину в UI/логах
         await session.delete(payment)
         await session.commit()
-        raise HTTPException(status_code=500, detail="payment_create_failed")
+        detail = f"yookassa_error: {e}"
+        try:
+            print(detail)
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail=detail)
 
 
 
