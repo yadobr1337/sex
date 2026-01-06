@@ -187,6 +187,14 @@ function loadState() {
   });
 }
 
+function handleStateError(err) {
+  if (err && err.message === "maintenance") {
+    showGate("Временные техработы. Попробуйте позже.", []);
+    return true;
+  }
+  return false;
+}
+
 function topup() {
   var init = (tg && tg.initData) || localStorage.getItem("initData") || "";
   var url = "/static/topup.html" + (init ? "?init=" + encodeURIComponent(init) : "");
@@ -316,6 +324,8 @@ function runGate() {
         if (e.message === "subscribe_required") {
           policyAccepted = localStorage.getItem("policyAccepted") === "1";
           runGate();
+        } else if (!handleStateError(e)) {
+          /* ignore */
         }
       });
 
@@ -325,6 +335,8 @@ function runGate() {
           if (err.message === "subscribe_required") {
             policyAccepted = localStorage.getItem("policyAccepted") === "1";
             runGate();
+          } else if (!handleStateError(err)) {
+            /* ignore */
           }
         });
       }, 10000);

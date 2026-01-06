@@ -52,6 +52,7 @@ from .schemas import (
     TariffOut,
     UserState,
     MarzbanServerOut,
+    AdminMaintenance,
 )
 from .utils import create_admin_ui_token, make_wireguard_link, new_slug, now_utc, validate_telegram_webapp_data, verify_admin_ui_token
 
@@ -75,6 +76,24 @@ async def set_price(session: AsyncSession, value: float) -> float:
         session.add(models.AppSetting(key="price_per_day", value=str(value)))
     await session.commit()
     return value
+
+
+async def get_maintenance(session: AsyncSession) -> bool:
+    setting = await session.get(models.AppSetting, "maintenance_mode")
+    if setting:
+        return setting.value == "1"
+    return False
+
+
+async def set_maintenance(session: AsyncSession, enabled: bool) -> bool:
+    setting = await session.get(models.AppSetting, "maintenance_mode")
+    val = "1" if enabled else "0"
+    if setting:
+        setting.value = val
+    else:
+        session.add(models.AppSetting(key="maintenance_mode", value=val))
+    await session.commit()
+    return enabled
 
 
 def get_rem_config() -> tuple[str, str, str]:
@@ -732,6 +751,8 @@ async def gate(user: models.User = Depends(get_current_user)):
 
 @app.get("/api/state", response_model=UserState)
 async def state(user: models.User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+    if await get_maintenance(session):
+        raise HTTPException(status_code=503, detail="maintenance")
     if not await check_subscription(user):
         raise HTTPException(status_code=403, detail="subscribe_required")
     tariffs = []
@@ -784,6 +805,8 @@ async def create_topup(
 
 
     provider = (payload.provider or "sbp").lower()
+    if provider != "sbp":
+        raise HTTPException(status_code=400, detail="Доступна только оплата СБП")
     payment = models.Payment(user_id=user.id, amount=payload.amount, status="pending", provider=provider)
 
     session.add(payment)
@@ -794,52 +817,7 @@ async def create_topup(
 
 
 
-    # CryptoBot flow
-    if provider == "crypto":
-        if not settings.crypto_pay_token:
-            raise HTTPException(status_code=400, detail="Crypto provider not configured")
-        import aiohttp
-        asset_amount = payload.amount
-        if settings.crypto_rate and settings.crypto_rate > 0:
-            asset_amount = round(payload.amount / settings.crypto_rate, 2)
-
-        body = {
-            "amount": f"{asset_amount:.2f}",
-            "asset": settings.crypto_pay_asset or "USDT",
-            "description": f"1VPN пополнение #{payment.id}",
-            "payload": str(payment.id),
-        }
-        try:
-            async with aiohttp.ClientSession() as http:
-                async with http.post(
-                    "https://pay.crypt.bot/api/createInvoice",
-                    json=body,
-                    headers={
-                        "Crypto-Pay-API-Token": settings.crypto_pay_token,
-                        "Content-Type": "application/json",
-                    },
-                ) as resp:
-                    data = await resp.json()
-                    if not data.get("ok"):
-                        raise HTTPException(status_code=500, detail="crypto_create_failed")
-                    result = data.get("result") or {}
-                    pay_url = result.get("pay_url")
-                    invoice_id = result.get("invoice_id")
-                    if not pay_url:
-                        raise HTTPException(status_code=500, detail="crypto_create_failed")
-                    payment.provider_payment_id = str(invoice_id or "")
-                    await session.commit()
-                    return {"confirmation_url": pay_url, "payment_id": payment.id}
-        except HTTPException:
-            await session.delete(payment)
-            await session.commit()
-            raise
-        except Exception:
-            await session.delete(payment)
-            await session.commit()
-            raise HTTPException(status_code=500, detail="crypto_create_failed")
-
-    # YooKassa payment creation (SBP)
+    # YooKassa payment creation (СБП)
     try:
         from yookassa import Configuration, Payment
         from yookassa.domain.exceptions import ApiError
@@ -1808,6 +1786,16 @@ async def admin_ui_set_price(payload: AdminPrice, _: str = Depends(admin_ui_guar
     await set_price(session, payload.price)
 
     return {"ok": True, "price": await get_price(session)}
+
+
+@app.get("/admin/ui/maintenance")
+async def admin_ui_get_maintenance(_: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)):
+    return {"enabled": await get_maintenance(session)}
+
+
+@app.post("/admin/ui/maintenance")
+async def admin_ui_set_maintenance(payload: AdminMaintenance, _: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)):
+    return {"ok": True, "enabled": await set_maintenance(session, payload.enabled)}
 
 
 

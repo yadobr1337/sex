@@ -48,6 +48,15 @@
           </div>
 
           <div class="admin-block">
+            <div class="label">Техработы</div>
+            <label class="toggle-row">
+              <input type="checkbox" id="maintenance-toggle" />
+              <span>Включить режим обслуживания (пользователи увидят плашку и доступ будет закрыт)</span>
+            </label>
+            <button class="ghost" id="save-maintenance">Сохранить режим</button>
+          </div>
+
+          <div class="admin-block">
             <div class="label">Пользователь / баланс</div>
             <input id="admin-user-id" placeholder="telegram_id или @username" />
             <input id="admin-amount" type="number" placeholder="Сумма" />

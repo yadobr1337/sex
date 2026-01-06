@@ -120,6 +120,10 @@ class AdminPrice(BaseModel):
     price: int
 
 
+class AdminMaintenance(BaseModel):
+    enabled: bool
+
+
 class AdminRemSquad(BaseModel):
     name: str
     uuid: str

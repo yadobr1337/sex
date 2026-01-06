@@ -2,7 +2,7 @@ const tg = window.Telegram?.WebApp;
 if (tg) tg.ready();
 
 const initData = tg?.initData || new URLSearchParams(window.location.search).get("init") || localStorage.getItem("initData") || "";
-let provider = "sbp";
+const provider = "sbp";
 let pricePerDay = 10;
 
 const el = (id) => document.getElementById(id);
@@ -56,8 +56,7 @@ document.querySelectorAll(".provider-btn").forEach((btn) => {
   btn.onclick = () => {
     document.querySelectorAll(".provider-btn").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
-    provider = btn.dataset.provider;
-    el("hint").textContent = provider === "crypto" ? "Оплата через CryptoBot" : "Оплата через СБП";
+    el("hint").textContent = "Оплата через СБП";
   };
 });
 
@@ -74,7 +73,7 @@ async function loadPrice() {
       b.textContent = "+" + values[idx];
       b.dataset.amount = values[idx];
     });
-    el("hint").textContent = provider === "crypto" ? "Оплата через CryptoBot" : "Оплата через СБП";
+    el("hint").textContent = "Оплата через СБП";
   } catch {
     // ignore
   }

@@ -50,6 +50,7 @@ function showPanel() {
   startStatusPoll();
   loadRemSquads();
   loadPrice();
+  loadMaintenance();
 }
 
 el("login-btn").onclick = async () => {
@@ -338,5 +339,33 @@ el("save-price").onclick = async () => {
     setStatus(e.message, false);
   }
 };
+
+async function loadMaintenance() {
+  try {
+    const res = await fetch("/admin/ui/maintenance", {
+      headers: { "Content-Type": "application/json", ...(token ? { "X-Admin-Token": token } : {}) },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const cb = el("maintenance-toggle");
+    if (cb) cb.checked = !!data.enabled;
+  } catch {
+    /* ignore */
+  }
+}
+
+const saveMaintBtn = el("save-maintenance");
+if (saveMaintBtn) {
+  saveMaintBtn.onclick = async () => {
+    const cb = el("maintenance-toggle");
+    const enabled = cb ? cb.checked : false;
+    try {
+      await api("/admin/ui/maintenance", { enabled });
+      setStatus(enabled ? "Техработы включены" : "Техработы выключены");
+    } catch (e) {
+      setStatus(e.message, false);
+    }
+  };
+}
 
 if (token) showPanel();
