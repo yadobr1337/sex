@@ -695,14 +695,25 @@ async def get_or_create_user(init_data: str, session: AsyncSession) -> models.Us
 
 
 async def get_current_user(
-
-    x_init_data: str = Header(..., alias="X-Telegram-Init"),
-
+    request: Request,
+    x_init_data: str | None = Header(None, alias="X-Telegram-Init"),
     session: AsyncSession = Depends(get_session),
-
 ) -> models.User:
+    init_data = x_init_data
+    if not init_data:
+        # пытаемся взять из тела (если прокси режет заголовки)
+        try:
+            body = await request.json()
+            if isinstance(body, dict):
+                init_data = body.get("initData") or body.get("init")
+        except Exception:
+            init_data = None
+    if not init_data:
+        init_data = request.query_params.get("init")
+    if not init_data:
+        raise HTTPException(status_code=400, detail="initData required")
 
-    user = await get_or_create_user(x_init_data, session)
+    user = await get_or_create_user(init_data, session)
 
     if user.banned:
 

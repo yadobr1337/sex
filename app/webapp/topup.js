@@ -17,11 +17,12 @@ function openPayUrl(url) {
 }
 
 async function api(path, options = {}) {
+  const initVal = initData || "";
   const res = await fetch(path, {
     method: options.method || "GET",
     headers: {
       "Content-Type": "application/json",
-      "X-Telegram-Init": initData,
+      "X-Telegram-Init": initVal,
       ...(options.headers || {}),
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
@@ -38,7 +39,7 @@ async function topup() {
   const amount = parseInt(input.value, 10);
   if (Number.isNaN(amount) || amount < 50) return alert("Минимум 50₽");
   try {
-    const data = await api("/api/topup", { method: "POST", body: { amount, provider } });
+    const data = await api("/api/topup", { method: "POST", body: { amount, provider, initData } });
     if (!data.confirmation_url) return alert("Не удалось получить ссылку оплаты");
     openPayUrl(data.confirmation_url);
   } catch (e) {

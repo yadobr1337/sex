@@ -48,11 +48,32 @@ function api(path, options) {
   options = options || {};
   var headers = options.headers || {};
   headers["Content-Type"] = "application/json";
-  headers["X-Telegram-Init"] = (tg && tg.initData) || initData || "";
+  var initVal = (tg && tg.initData) || initData || "";
+  headers["X-Telegram-Init"] = initVal;
+
+  // Прокладка initData в body/квери, если заголовки режутся
+  var method = (options.method || "GET").toUpperCase();
+  var body = options.body || null;
+  if (!options.skipInit && method !== "GET") {
+    if (body == null) body = {};
+    if (typeof body === "object" && !Array.isArray(body) && !body.initData) {
+      body.initData = initVal;
+    }
+  }
+  if (!options.skipInit && method === "GET" && initVal && path.indexOf("init=") === -1) {
+    try {
+      var url = new URL(path, window.location.origin);
+      url.searchParams.set("init", initVal);
+      path = url.pathname + url.search;
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   return fetch(path, {
     method: options.method || "GET",
     headers: headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
+    body: body ? JSON.stringify(body) : undefined,
   }).then(function (res) {
     if (!res.ok) {
       return res.json().catch(function () { return {}; }).then(function (data) {
