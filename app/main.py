@@ -872,11 +872,14 @@ async def create_topup(
                 err_resp = err_resp.text
         except Exception:
             err_resp = None
+        err_args = getattr(e, "args", None)
         detail = f"yookassa_error: {err_text}"
         if err_body:
             detail += f" | body: {err_body}"
         if err_resp:
             detail += f" | resp: {err_resp}"
+        if err_args:
+            detail += f" | args: {err_args}"
         try:
             print(detail)
         except Exception:
