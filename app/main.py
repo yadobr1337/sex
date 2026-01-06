@@ -865,9 +865,18 @@ async def create_topup(
         await session.commit()
         err_text = str(e)
         err_body = getattr(e, "body", None)
+        err_resp = None
+        try:
+            err_resp = getattr(e, "response", None)
+            if err_resp and hasattr(err_resp, "text"):
+                err_resp = err_resp.text
+        except Exception:
+            err_resp = None
         detail = f"yookassa_error: {err_text}"
         if err_body:
             detail += f" | body: {err_body}"
+        if err_resp:
+            detail += f" | resp: {err_resp}"
         try:
             print(detail)
         except Exception:
