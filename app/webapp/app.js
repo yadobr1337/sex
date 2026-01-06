@@ -312,8 +312,6 @@ el("add-device").onclick = setDevicesCount;
 el("copy-link").onclick = copyLink;
 var connectBtnInit = el("connect-btn");
 if (connectBtnInit) connectBtnInit.onclick = openLink;
-var payBtn = el("payments-btn");
-if (payBtn) payBtn.onclick = showPayments;
 
 function runGate() {
   api("/api/init", { method: "POST", body: { initData: initData } })

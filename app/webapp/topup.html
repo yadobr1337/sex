@@ -25,7 +25,10 @@
 </head>
 <body>
   <div class="topup-card">
-    <button class="ghost" id="back-btn" type="button">← Назад</button>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <button class="ghost" id="back-btn" type="button">← Назад</button>
+      <button class="ghost history-btn" id="history-btn" type="button">История</button>
+    </div>
     <h1>Пополнение</h1>
     <p class="label">Введите сумму, ₽</p>
     <input id="topup-amount" type="number" min="50" placeholder="Сумма, ₽" />
@@ -40,7 +43,6 @@
     </div>
     <p class="label" id="hint" style="text-align:center"></p>
     <button class="accent" id="topup-submit" type="button">Пополнить баланс</button>
-    <button class="ghost history-btn" id="history-btn" type="button" style="margin-top:14px;">История пополнений</button>
   </div>
 
   <script src="/static/topup.js"></script>
