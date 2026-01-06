@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     rem_api_token: str = ""
     crypto_pay_token: str = ""
     crypto_pay_asset: str = "USDT"
+    crypto_rate: float = 0.0  # рублей за 1 единицу актива (например, 100 = 100₽ за 1 USDT/TON)
 
     model_config = {
         "env_file": ".env",

@@ -799,9 +799,12 @@ async def create_topup(
         if not settings.crypto_pay_token:
             raise HTTPException(status_code=400, detail="Crypto provider not configured")
         import aiohttp
+        asset_amount = payload.amount
+        if settings.crypto_rate and settings.crypto_rate > 0:
+            asset_amount = round(payload.amount / settings.crypto_rate, 2)
 
         body = {
-            "amount": str(payload.amount),
+            "amount": f"{asset_amount:.2f}",
             "asset": settings.crypto_pay_asset or "USDT",
             "description": f"1VPN пополнение #{payment.id}",
             "payload": str(payment.id),
