@@ -169,7 +169,7 @@ function loadState() {
     var suspended = state.link_suspended || (typeof state.estimated_days === "number" && state.estimated_days <= 0);
     var linkRow = el("link-row");
     if (linkRow) {
-      if (state.link) {
+      if (!suspended && state.link) {
         linkRow.style.display = "flex";
         requestAnimationFrame(function () { linkRow.classList.add("show"); });
       } else {
@@ -184,11 +184,11 @@ function loadState() {
       connectBtn.disabled = !showConnect;
     }
     var copyBtn = el("copy-link");
-    if (copyBtn) copyBtn.style.display = state.link ? "inline-flex" : "none";
+    if (copyBtn) copyBtn.style.display = !suspended && state.link ? "inline-flex" : "none";
     var suspendedBanner = el("suspended-banner");
     if (suspendedBanner) suspendedBanner.hidden = !suspended;
     var linkTitle = el("link-title");
-    if (linkTitle) linkTitle.style.display = state.link ? "block" : "none";
+    if (linkTitle) linkTitle.style.display = (!suspended && state.link) ? "block" : "none";
     el("ios-help").href = state.ios_help_url;
     el("android-help").href = state.android_help_url;
     el("support-link").href = state.support_url;
@@ -200,7 +200,7 @@ function loadState() {
     if (openAdmin) openAdmin.hidden = !state.is_admin;
     var deviceSection = el("device-section");
     if (deviceSection) {
-      if (state.link) {
+      if (!suspended && state.link) {
         deviceSection.style.display = "block";
         requestAnimationFrame(function () { deviceSection.classList.add("show"); });
       } else {
