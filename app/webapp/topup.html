@@ -11,28 +11,29 @@
     .topup-card { max-width: 420px; width: 100%; background: var(--card); border:1px solid rgba(255,255,255,0.1); padding:20px; border-radius:16px; box-shadow:0 20px 40px rgba(0,0,0,0.35);}
     .topup-card h1 { margin:0 0 10px; }
     .topup-card .quick { display:flex; gap:8px; margin:10px 0; }
+    .provider-btn.active { border-color: var(--accent-bright); box-shadow: 0 0 0 1px rgba(74,63,176,0.6); }
     .topup-card input { width:100%; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.05); color:#fff; }
     .topup-card button { width:100%; margin-top:10px; }
   </style>
 </head>
 <body>
   <div class="topup-card">
-    <button class="ghost" id="back-btn">← Назад</button>
+    <button class="ghost" id="back-btn" type="button">← Назад</button>
     <h1>Пополнение</h1>
     <p class="label">Введите сумму, ₽</p>
     <input id="topup-amount" type="number" min="50" placeholder="Сумма, ₽" />
     <div class="quick" id="quick-buttons">
-      <button class="ghost" data-amount="300">+300</button>
-      <button class="ghost" data-amount="600">+600</button>
-      <button class="ghost" data-amount="1200">+1200</button>
+      <button class="ghost" type="button" data-amount="300">+300</button>
+      <button class="ghost" type="button" data-amount="600">+600</button>
+      <button class="ghost" type="button" data-amount="1200">+1200</button>
     </div>
     <div class="label">Способ оплаты</div>
     <div class="quick" id="provider-buttons">
-      <button class="ghost provider-btn active" data-provider="sbp">СБП</button>
-      <button class="ghost provider-btn" data-provider="crypto">CryptoBot</button>
+      <button class="ghost provider-btn active" type="button" data-provider="sbp">СБП</button>
+      <button class="ghost provider-btn" type="button" data-provider="crypto">CryptoBot</button>
     </div>
     <p class="label" id="hint"></p>
-    <button class="accent" id="topup-submit">Пополнить баланс</button>
+    <button class="accent" id="topup-submit" type="button">Пополнить баланс</button>
   </div>
 
   <script src="/static/topup.js"></script>
