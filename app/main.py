@@ -863,7 +863,11 @@ async def create_topup(
         # вернуть понятную ошибку, чтобы увидеть причину в UI/логах
         await session.delete(payment)
         await session.commit()
-        detail = f"yookassa_error: {e}"
+        err_text = str(e)
+        err_body = getattr(e, "body", None)
+        detail = f"yookassa_error: {err_text}"
+        if err_body:
+            detail += f" | body: {err_body}"
         try:
             print(detail)
         except Exception:
