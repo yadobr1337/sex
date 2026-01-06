@@ -51,6 +51,7 @@ function showPanel() {
   loadRemSquads();
   loadPrice();
   loadMaintenance();
+  loadMaintenanceAllow();
 }
 
 el("login-btn").onclick = async () => {
@@ -362,6 +363,38 @@ if (saveMaintBtn) {
     try {
       await api("/admin/ui/maintenance", { enabled });
       setStatus(enabled ? "Техработы включены" : "Техработы выключены");
+    } catch (e) {
+      setStatus(e.message, false);
+    }
+  };
+}
+
+async function loadMaintenanceAllow() {
+  try {
+    const res = await fetch("/admin/ui/maintenance/allow", {
+      headers: { "Content-Type": "application/json", ...(token ? { "X-Admin-Token": token } : {}) },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const input = el("maintenance-allow");
+    if (input && data.telegram_ids) input.value = data.telegram_ids.join(", ");
+  } catch {
+    /* ignore */
+  }
+}
+
+const saveMaintAllowBtn = el("save-maintenance-allow");
+if (saveMaintAllowBtn) {
+  saveMaintAllowBtn.onclick = async () => {
+    const input = el("maintenance-allow");
+    const raw = input ? input.value : "";
+    const ids = raw
+      .split(/[,\\s]+/)
+      .map((x) => x.trim())
+      .filter((x) => x);
+    try {
+      await api("/admin/ui/maintenance/allow", { telegram_ids: ids });
+      setStatus("Список исключений сохранен");
     } catch (e) {
       setStatus(e.message, false);
     }

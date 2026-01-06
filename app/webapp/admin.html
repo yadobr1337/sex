@@ -47,13 +47,22 @@
             <button class="accent" id="save-price">Сохранить цену</button>
           </div>
 
-          <div class="admin-block">
+          <div class="admin-block maintenance-block">
             <div class="label">Техработы</div>
-            <label class="toggle-row">
-              <input type="checkbox" id="maintenance-toggle" />
-              <span>Включить режим обслуживания (пользователи увидят плашку и доступ будет закрыт)</span>
-            </label>
-            <button class="ghost" id="save-maintenance">Сохранить режим</button>
+            <div class="maintenance-row">
+              <label class="switch">
+                <input type="checkbox" id="maintenance-toggle" />
+                <span class="slider"></span>
+              </label>
+              <div class="maintenance-text">
+                <div class="value">Режим обслуживания</div>
+                <div class="label">Пользователи увидят плашку «Временные техработы», доступ будет закрыт.</div>
+              </div>
+            </div>
+            <button class="accent" id="save-maintenance">Сохранить режим</button>
+            <div class="label">Список Telegram ID, которым разрешен доступ во время техработ (через запятую)</div>
+            <input id="maintenance-allow" placeholder="Пример: 12345,67890" />
+            <button class="ghost" id="save-maintenance-allow">Сохранить список</button>
           </div>
 
           <div class="admin-block">

@@ -511,6 +511,68 @@ a.ghost {
   color: #ffb3ad;
 }
 
+.maintenance-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(52, 73, 94, 0.2), rgba(52, 73, 94, 0.05));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.maintenance-text .value {
+  font-weight: 600;
+  color: #fff;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 56px;
+  height: 30px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.15);
+  transition: 0.3s;
+  border-radius: 30px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 4px;
+  bottom: 4px;
+  background-color: #fff;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.switch input:checked + .slider {
+  background: linear-gradient(135deg, var(--accent-bright), var(--primary));
+  box-shadow: 0 6px 16px rgba(74, 63, 176, 0.4);
+}
+
+.switch input:checked + .slider:before {
+  transform: translateX(26px);
+}
+
 @media (max-width: 420px) {
   .stats {
     grid-template-columns: repeat(2, 1fr);

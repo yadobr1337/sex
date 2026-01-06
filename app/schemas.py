@@ -124,6 +124,10 @@ class AdminMaintenance(BaseModel):
     enabled: bool
 
 
+class AdminMaintenanceAllow(BaseModel):
+    telegram_ids: list[str]
+
+
 class AdminRemSquad(BaseModel):
     name: str
     uuid: str

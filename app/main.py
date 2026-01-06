@@ -53,6 +53,7 @@ from .schemas import (
     UserState,
     MarzbanServerOut,
     AdminMaintenance,
+    AdminMaintenanceAllow,
 )
 from .utils import create_admin_ui_token, make_wireguard_link, new_slug, now_utc, validate_telegram_webapp_data, verify_admin_ui_token
 
@@ -94,6 +95,24 @@ async def set_maintenance(session: AsyncSession, enabled: bool) -> bool:
         session.add(models.AppSetting(key="maintenance_mode", value=val))
     await session.commit()
     return enabled
+
+
+async def get_maintenance_allow(session: AsyncSession) -> set[str]:
+    setting = await session.get(models.AppSetting, "maintenance_allow")
+    if not setting or not setting.value:
+        return set()
+    return {v for v in setting.value.split(",") if v}
+
+
+async def set_maintenance_allow(session: AsyncSession, ids: list[str]) -> list[str]:
+    cleaned = [str(i).strip() for i in ids if str(i).strip()]
+    setting = await session.get(models.AppSetting, "maintenance_allow")
+    if setting:
+        setting.value = ",".join(cleaned)
+    else:
+        session.add(models.AppSetting(key="maintenance_allow", value=",".join(cleaned)))
+    await session.commit()
+    return cleaned
 
 
 def get_rem_config() -> tuple[str, str, str]:
@@ -752,7 +771,9 @@ async def gate(user: models.User = Depends(get_current_user)):
 @app.get("/api/state", response_model=UserState)
 async def state(user: models.User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
     if await get_maintenance(session):
-        raise HTTPException(status_code=503, detail="maintenance")
+        allow = await get_maintenance_allow(session)
+        if str(user.telegram_id) not in allow:
+            raise HTTPException(status_code=503, detail="maintenance")
     if not await check_subscription(user):
         raise HTTPException(status_code=403, detail="subscribe_required")
     tariffs = []
@@ -1796,6 +1817,17 @@ async def admin_ui_get_maintenance(_: str = Depends(admin_ui_guard), session: As
 @app.post("/admin/ui/maintenance")
 async def admin_ui_set_maintenance(payload: AdminMaintenance, _: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)):
     return {"ok": True, "enabled": await set_maintenance(session, payload.enabled)}
+
+
+@app.get("/admin/ui/maintenance/allow")
+async def admin_ui_get_maintenance_allow(_: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)):
+    return {"telegram_ids": list(await get_maintenance_allow(session))}
+
+
+@app.post("/admin/ui/maintenance/allow")
+async def admin_ui_set_maintenance_allow(payload: AdminMaintenanceAllow, _: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)):
+    ids = await set_maintenance_allow(session, payload.telegram_ids)
+    return {"ok": True, "telegram_ids": ids}
 
 
 
