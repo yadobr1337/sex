@@ -145,7 +145,7 @@ function loadState() {
 
     var connectBtn = el("connect-btn");
     if (connectBtn) connectBtn.disabled = !state.link;
-    var suspended = state.link_suspended;
+    var suspended = state.link_suspended || !state.link;
     var linkRow = el("link-row");
     if (linkRow) {
       if (suspended) {
