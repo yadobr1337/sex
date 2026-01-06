@@ -839,6 +839,7 @@ async def create_topup(
     # YooKassa payment creation (SBP)
     try:
         from yookassa import Configuration, Payment
+        from yookassa.domain.exceptions import ApiError
 
         Configuration.account_id = settings.yookassa_shop_id
         Configuration.secret_key = settings.yookassa_secret_key
@@ -859,6 +860,18 @@ async def create_topup(
 
         return {"confirmation_url": payment_response.confirmation.confirmation_url, "payment_id": payment.id}
 
+    except ApiError as e:
+        await session.delete(payment)
+        await session.commit()
+        detail = (
+            f"yookassa_error: {e}"
+            f" | type: {getattr(e, 'type', None)}"
+            f" | code: {getattr(e, 'code', None)}"
+            f" | param: {getattr(e, 'parameter', None)}"
+            f" | desc: {getattr(e, 'description', None)}"
+            f" | idempotence: {getattr(e, 'idempotence_key', None)}"
+        )
+        raise HTTPException(status_code=500, detail=detail)
     except Exception as e:
         # вернуть понятную ошибку, чтобы увидеть причину в UI/логах
         await session.delete(payment)
