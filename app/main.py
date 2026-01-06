@@ -1200,6 +1200,11 @@ async def cryptobot_hook(request: Request, session: AsyncSession = Depends(get_s
     invoice_id = data.get("invoice_id") or data.get("invoice", {}).get("invoice_id")
 
     if update_type != "invoice_paid" or status_value != "paid" or not payload_id:
+        # логируем шум для отладки, но не падаем
+        try:
+            print("cryptobot_hook_skip", {"update_type": update_type, "status": status_value, "payload": payload_id})
+        except Exception:
+            pass
         return {"ok": True}
 
     try:
@@ -1215,6 +1220,10 @@ async def cryptobot_hook(request: Request, session: AsyncSession = Depends(get_s
             select(models.Payment).where(models.Payment.provider_payment_id == str(invoice_id))
         )
     if not payment or payment.status == "succeeded":
+        try:
+            print("cryptobot_hook_not_found_or_done", {"payment_pk": payment_pk, "invoice_id": invoice_id})
+        except Exception:
+            pass
         return {"ok": True}
 
     payment.status = "succeeded"
@@ -1233,6 +1242,10 @@ async def cryptobot_hook(request: Request, session: AsyncSession = Depends(get_s
         await session.commit()
         return {"ok": True, "link_suspended": recalculated.get("link_suspended", True)}
 
+    try:
+        print("cryptobot_hook_no_user", {"payment_id": payment.id})
+    except Exception:
+        pass
     await session.commit()
     return {"ok": True}
 
