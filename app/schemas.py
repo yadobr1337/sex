@@ -52,6 +52,16 @@ class PaymentRequest(BaseModel):
     provider: str | None = "sbp"
 
 
+class PaymentOut(BaseModel):
+    id: int
+    amount: int
+    status: str
+    provider: str
+    created_at: dt.datetime
+    class Config:
+        from_attributes = True
+
+
 class SubscriptionRequest(BaseModel):
     tariff_id: int
     devices: int
@@ -126,6 +136,11 @@ class AdminMaintenance(BaseModel):
 
 class AdminMaintenanceAllow(BaseModel):
     telegram_ids: list[str]
+
+
+class AdminUserLookup(BaseModel):
+    telegram_id: Optional[str] = None
+    username: Optional[str] = None
 
 
 class AdminRemSquad(BaseModel):

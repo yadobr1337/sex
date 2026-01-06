@@ -317,6 +317,33 @@ el("admin-unban").onclick = async () => {
   }
 };
 
+const payHistoryBtn = el("admin-payments");
+if (payHistoryBtn) {
+  payHistoryBtn.onclick = async () => {
+    const body = resolveUserBody();
+    if (!body) return setStatus("Укажите пользователя", false);
+    try {
+      const list = await api("/admin/ui/payments", body);
+      const box = el("admin-payments-list");
+      if (box) {
+        if (!list.length) {
+          box.innerHTML = "<div class='label'>Оплат нет</div>";
+        } else {
+          box.innerHTML = list
+            .map(
+              (p) =>
+                `<div class="line"><span class="label">#${p.id}</span><span class="value">${p.amount} ₽, ${p.provider}, ${p.status}, ${new Date(p.created_at).toLocaleString()}</span></div>`
+            )
+            .join("");
+        }
+      }
+      setStatus("История загрузилась");
+    } catch (e) {
+      setStatus(e.message, false);
+    }
+  };
+}
+
 async function loadPrice() {
   try {
     const res = await fetch("/admin/ui/price", {

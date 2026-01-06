@@ -48,12 +48,14 @@ from .schemas import (
     AdminRemSquadDelete,
     DeviceRequest,
     PaymentRequest,
+    PaymentOut,
     SubscriptionRequest,
     TariffOut,
     UserState,
     MarzbanServerOut,
     AdminMaintenance,
     AdminMaintenanceAllow,
+    AdminUserLookup,
 )
 from .utils import create_admin_ui_token, make_wireguard_link, new_slug, now_utc, validate_telegram_webapp_data, verify_admin_ui_token
 
@@ -807,6 +809,18 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
         estimated_days=recalculated["estimated_days"],
     )
 
+@app.get("/api/payments", response_model=list[PaymentOut])
+async def list_payments(user: models.User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+    payments = (
+        await session.scalars(
+            select(models.Payment)
+            .where(models.Payment.user_id == user.id)
+            .order_by(models.Payment.created_at.desc())
+            .limit(20)
+        )
+    ).all()
+    return payments
+
 @app.post("/api/topup")
 
 async def create_topup(
@@ -1166,7 +1180,11 @@ async def yookassa_hook(request: Request, session: AsyncSession = Depends(get_se
 
             user.balance += payment.amount
 
-            await bot.send_message(int(user.telegram_id), f"Баланс пополнен на {payment.amount}?", reply_markup=webapp_keyboard())
+            await bot.send_message(
+                int(user.telegram_id),
+                f"Баланс пополнен на {payment.amount} ₽",
+                reply_markup=webapp_keyboard(),
+            )
 
     else:
 
@@ -1828,6 +1846,21 @@ async def admin_ui_get_maintenance_allow(_: str = Depends(admin_ui_guard), sessi
 async def admin_ui_set_maintenance_allow(payload: AdminMaintenanceAllow, _: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)):
     ids = await set_maintenance_allow(session, payload.telegram_ids)
     return {"ok": True, "telegram_ids": ids}
+
+@app.post("/admin/ui/payments", response_model=list[PaymentOut])
+async def admin_ui_payments(payload: AdminUserLookup, _: str = Depends(admin_ui_guard), session: AsyncSession = Depends(get_session)):
+    target = await session.scalar(find_user_query(payload.telegram_id, payload.username))
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    payments = (
+        await session.scalars(
+            select(models.Payment)
+            .where(models.Payment.user_id == target.id)
+            .order_by(models.Payment.created_at.desc())
+            .limit(30)
+        )
+    ).all()
+    return payments
 
 
 

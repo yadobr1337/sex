@@ -573,6 +573,18 @@ a.ghost {
   transform: translateX(26px);
 }
 
+.stats-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.stats-actions .ghost {
+  min-width: 110px;
+}
+
 @media (max-width: 420px) {
   .stats {
     grid-template-columns: repeat(2, 1fr);

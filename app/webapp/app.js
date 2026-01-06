@@ -205,6 +205,48 @@ function deleteDevice(id) {
   api("/api/device/" + id, { method: "DELETE" }).then(loadState).catch(function () { });
 }
 
+function showPayments() {
+  api("/api/payments")
+    .then(function (list) {
+      var backdrop = document.createElement("div");
+      backdrop.className = "modal-backdrop";
+      var card = document.createElement("div");
+      card.className = "modal-card";
+      var html = "<h3>История пополнений</h3>";
+      if (!list.length) {
+        html += "<div class='label'>Нет платежей</div>";
+      } else {
+        html += list
+          .map(function (p) {
+            return (
+              "<div class='line'><span class='label'>#" +
+              p.id +
+              "</span><span class='value'>" +
+              p.amount +
+              " ₽, " +
+              (p.provider || "") +
+              ", " +
+              (p.status || "") +
+              ", " +
+              new Date(p.created_at).toLocaleString() +
+              "</span></div>"
+            );
+          })
+          .join("");
+      }
+      html += "<div class='modal-actions'><button class='accent' id='close-payments'>Закрыть</button></div>";
+      card.innerHTML = html;
+      backdrop.appendChild(card);
+      document.body.appendChild(backdrop);
+      card.querySelector("#close-payments").onclick = function () {
+        backdrop.remove();
+      };
+    })
+    .catch(function (e) {
+      if (tg && tg.showPopup) tg.showPopup({ message: e.message || "Не удалось загрузить историю" });
+    });
+}
+
 function setDevicesCount() {
   var backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
@@ -270,6 +312,8 @@ el("add-device").onclick = setDevicesCount;
 el("copy-link").onclick = copyLink;
 var connectBtnInit = el("connect-btn");
 if (connectBtnInit) connectBtnInit.onclick = openLink;
+var payBtn = el("payments-btn");
+if (payBtn) payBtn.onclick = showPayments;
 
 function runGate() {
   api("/api/init", { method: "POST", body: { initData: initData } })
