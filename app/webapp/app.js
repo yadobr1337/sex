@@ -160,6 +160,8 @@ function loadState() {
     if (copyBtn) copyBtn.style.display = suspended ? "none" : "inline-flex";
     var suspendedBanner = el("suspended-banner");
     if (suspendedBanner) suspendedBanner.hidden = !suspended;
+    var linkTitle = el("link-title");
+    if (linkTitle) linkTitle.style.display = suspended ? "none" : "block";
     el("ios-help").href = state.ios_help_url;
     el("android-help").href = state.android_help_url;
     el("support-link").href = state.support_url;
