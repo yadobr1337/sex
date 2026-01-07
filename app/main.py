@@ -263,14 +263,11 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
         except Exception:
             user.link_suspended = True
             link_value = ""
-            raise HTTPException(status_code=503, detail="rem_provision_failed")
-        # если после успешного вызова ссылка не появилась — пробуем взять из rem_user, иначе ошибка
+        # если после вызова ссылка не появилась — пробуем взять из rem_user
         if not link_value:
             rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == user.id))
             if rem_user and rem_user.subscription_url:
                 link_value = rem_user.subscription_url
-            else:
-                raise HTTPException(status_code=503, detail="rem_provision_failed_no_link")
         # уведомление о скором окончании
         if user.telegram_id and 0 < estimated_days <= 3 and user.balance > 0 and prev_days is not None:
             send_warn = True
