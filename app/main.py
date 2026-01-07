@@ -225,14 +225,13 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
         user.subscription_end = None
         user.allowed_devices = device_count
         user.link_suspended = True
-        expires_at = now_utc()
+        # Не создаём/обновляем Rem-пользователя, чтобы не занимать слот до первой оплаты.
+        # Если уже есть — можем только выключить.
         try:
-            panel_uuid, short_uuid, _ = await rem_upsert_user(session, user, device_count, expires_at)
             rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == user.id))
-            current_uuid = panel_uuid or (rem_user.panel_uuid if rem_user else "") or panel_uuid_current
-            if not current_uuid:
-                current_uuid = short_uuid or (rem_user.short_uuid if rem_user else "") or short_uuid_current
-            await rem_disable_user(current_uuid)
+            current_uuid = (rem_user.panel_uuid if rem_user else "") or panel_uuid_current or short_uuid_current
+            if current_uuid:
+                await rem_disable_user(current_uuid)
         except Exception:
             pass
         # уведомление о паузе подписки
