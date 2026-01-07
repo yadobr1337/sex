@@ -177,6 +177,16 @@ async def rem_enable_user(panel_uuid: str) -> None:
             return
 
 
+async def rem_delete_user(panel_uuid: str) -> None:
+    if not panel_uuid:
+        return
+    base_url, base_api, token = get_rem_config()
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    async with aiohttp.ClientSession() as http:
+        async with http.delete(f"{base_api}/users/{panel_uuid}", headers=headers) as resp:
+            return
+
+
 async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
     devices_count = await session.scalar(
         select(func.count(models.Device.id)).where(models.Device.user_id == user.id)
@@ -225,13 +235,13 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
         user.subscription_end = None
         user.allowed_devices = device_count
         user.link_suspended = True
-        # Не создаём/обновляем Rem-пользователя, чтобы не занимать слот до первой оплаты.
-        # Если уже есть — можем только выключить.
+        # Удаляем пользователя из Remnawave, чтобы не занимать слот до пополнения
         try:
             rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == user.id))
             current_uuid = (rem_user.panel_uuid if rem_user else "") or panel_uuid_current or short_uuid_current
-            if current_uuid:
-                await rem_disable_user(current_uuid)
+            if rem_user and current_uuid:
+                await rem_delete_user(current_uuid)
+                await session.delete(rem_user)
         except Exception:
             pass
         # уведомление о паузе подписки
