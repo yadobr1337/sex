@@ -179,7 +179,11 @@ function loadState() {
     }
     var connectBtn = el("connect-btn");
     if (connectBtn) {
-      var showConnect = !!state.link && state.link_suspended === false && (state.estimated_days || 0) > 0;
+      var showConnect =
+        !!state.link &&
+        state.link_suspended === false &&
+        (state.estimated_days || 0) > 0 &&
+        (state.balance || 0) > 0;
       connectBtn.style.display = showConnect ? "inline-flex" : "none";
       connectBtn.disabled = !showConnect;
     }
