@@ -352,14 +352,20 @@ async def rem_upsert_user(
     }
 
     async with aiohttp.ClientSession() as http:
+        data = None
+        attempted_patch = False
         if rem_user and rem_user.panel_uuid:
             payload["uuid"] = rem_user.panel_uuid
+            attempted_patch = True
             async with http.patch(f"{base_api}/users", json=payload, headers=headers) as resp:
-                if resp.status not in (200, 201, 204):
-                    detail = await resp.text()
-                    raise HTTPException(status_code=503, detail=f"Remnawave update failed: {detail}")
-                data = await resp.json()
-        else:
+                if resp.status in (200, 201, 204):
+                    data = await resp.json()
+                else:
+                    # Если пользователя в панели уже удалили (404) — пробуем создать заново
+                    if resp.status != 404:
+                        detail = await resp.text()
+                        raise HTTPException(status_code=503, detail=f"Remnawave update failed: {detail}")
+        if data is None:
             async with http.post(f"{base_api}/users", json=payload, headers=headers) as resp:
                 if resp.status not in (200, 201, 204):
                     detail = await resp.text()
