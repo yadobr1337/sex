@@ -444,6 +444,13 @@ a.ghost {
   flex: 1 1 calc(33% - 8px);
 }
 
+.support-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
 .admin {
   border-color: rgba(241, 196, 15, 0.4);
   position: relative;

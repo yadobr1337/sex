@@ -42,6 +42,7 @@ class UserState(BaseModel):
     ios_help_url: str
     android_help_url: str
     support_url: str
+    channel_url: Optional[str] = None
     price_per_day: float
     estimated_days: int
     is_admin: bool

@@ -196,6 +196,8 @@ function loadState() {
     el("ios-help").href = state.ios_help_url;
     el("android-help").href = state.android_help_url;
     el("support-link").href = state.support_url;
+    var ch = el("channel-link");
+    if (ch && state.channel_url) ch.href = state.channel_url;
     if (tg && tg.initData) {
       localStorage.setItem("initData", tg.initData);
       initData = tg.initData;
@@ -346,58 +348,28 @@ if (connectBtnInit) connectBtnInit.onclick = openLink;
 
 function runGate() {
   api("/api/init", { method: "POST", body: { initData: initData } })
-    .then(function () { return api("/api/gate"); })
-    .then(function (gate) {
-      if (!gate.subscribed) {
-        showGate("Подпишитесь на наш канал, чтобы продолжить.", [
-          {
-            text: "Подписаться",
-            onClick: function () {
-              if (gate.required_channel) {
-                window.open("https://t.me/" + gate.required_channel.replace("@", ""), "_blank");
-              }
-            },
-          },
-          {
-            text: "Проверить",
-            className: "ghost",
-            onClick: function () { runGate(); },
-          },
-        ]);
-        return;
-      }
-
+    .then(function () {
       if (!policyAccepted) {
         showGate(
-          "Согласитесь с политикой конфиденциальности, чтобы открыть 1VPN.",
+          "??????????? ? ????????? ??????????????????, ????? ??????? 1VPN.",
           [
-            gate.policy_url
-              ? {
-                  text: "Политика",
-                  className: "ghost",
-                  onClick: function () { window.open(gate.policy_url, "_blank"); },
-                }
-              : null,
             {
-              text: "Согласен",
+              text: "????????",
               onClick: function () {
                 policyAccepted = true;
                 localStorage.setItem("policyAccepted", "1");
                 hideGate();
-                loadState().catch(function () { });
+                loadState().catch(function () {});
               },
             },
-          ].filter(function (x) { return !!x; })
+          ]
         );
         return;
       }
 
       hideGate();
       loadState().catch(function (e) {
-        if (e.message === "subscribe_required") {
-          policyAccepted = localStorage.getItem("policyAccepted") === "1";
-          runGate();
-        } else if (!handleStateError(e)) {
+        if (!handleStateError(e)) {
           /* ignore */
         }
       });
@@ -405,20 +377,18 @@ function runGate() {
       if (stateTimer) clearInterval(stateTimer);
       stateTimer = setInterval(function () {
         loadState().catch(function (err) {
-          if (err.message === "subscribe_required") {
-            policyAccepted = localStorage.getItem("policyAccepted") === "1";
-            runGate();
-          } else if (!handleStateError(err)) {
+          if (!handleStateError(err)) {
             /* ignore */
           }
         });
       }, 10000);
     })
     .catch(function () {
-      showGate("Не удалось загрузить данные. Повторите попытку.", [
-        { text: "Повторить", onClick: function () { runGate(); } },
+      showGate("?? ??????? ????????? ??????. ????????? ???????.", [
+        { text: "?????????", onClick: function () { runGate(); } },
       ]);
     });
 }
+
 
 runGate();

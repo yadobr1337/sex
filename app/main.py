@@ -810,8 +810,6 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
         allow = await get_maintenance_allow(session)
         if str(user.telegram_id) not in allow:
             raise HTTPException(status_code=503, detail="maintenance")
-    if not await check_subscription(user):
-        raise HTTPException(status_code=403, detail="subscribe_required")
     tariffs = []
     devices = (
         await session.scalars(
@@ -824,6 +822,18 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
     recalculated = await recalc_subscription(session, user)
     price_value = await get_price(session)
     server_data: Optional[dict] = None
+    channel = settings.required_channel or ""
+    channel_url = None
+    if channel:
+        ch = channel.strip()
+        if ch.startswith("https://"):
+            ch = ch.split("/")[-1]
+        if ch.startswith("t.me/"):
+            ch = ch.split("/")[-1]
+        if ch and ch[0].isalpha() and not ch.startswith("@") and not ch.startswith("-100"):
+            ch = f"@{ch}"
+        if ch.startswith("@"):
+            channel_url = f"https://t.me/{ch.replace('@','')}"
 
     return UserState(
         balance=user.balance,
@@ -838,6 +848,7 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
         ios_help_url=settings.ios_help_url,
         android_help_url=settings.android_help_url,
         support_url=f"https://t.me/{settings.support_username}",
+        channel_url=channel_url,
         is_admin=settings.admin_tg_id == str(user.telegram_id),
         price_per_day=price_value,
         estimated_days=recalculated["estimated_days"],
