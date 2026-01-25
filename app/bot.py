@@ -10,10 +10,8 @@ def webapp_keyboard() -> InlineKeyboardMarkup:
     base_url = (settings.webapp_url or "").strip()
     if base_url:
         base_url = base_url.rstrip("/")
-        if not base_url.endswith("/app"):
-            base_url = f"{base_url}/app"
     else:
-        base_url = "https://the1priority.ru/app"
+        base_url = "https://the1priority.ru"
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="Открыть 1VPN", web_app=WebAppInfo(url=base_url))],
