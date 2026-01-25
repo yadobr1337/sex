@@ -7,9 +7,16 @@ from .config import settings
 
 
 def webapp_keyboard() -> InlineKeyboardMarkup:
+    base_url = (settings.webapp_url or "").strip()
+    if base_url:
+        base_url = base_url.rstrip("/")
+        if not base_url.endswith("/app"):
+            base_url = f"{base_url}/app"
+    else:
+        base_url = "https://the1priority.ru/app"
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Открыть 1VPN", web_app=WebAppInfo(url=settings.webapp_url))],
+            [InlineKeyboardButton(text="Открыть 1VPN", web_app=WebAppInfo(url=base_url))],
             [InlineKeyboardButton(text="Поддержка", url=f"https://t.me/{settings.support_username}")],
         ]
     )
