@@ -449,7 +449,10 @@ async def bill_users_once() -> None:
                 user.link_suspended = True
                 user.subscription_end = None
                 try:
-                    await rem_upsert_user(session, user, device_count, now_utc())
+                    rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == user.id))
+                    if rem_user and rem_user.panel_uuid:
+                        await rem_delete_user(rem_user.panel_uuid)
+                        await session.delete(rem_user)
                 except Exception:
                     pass
 
@@ -1095,9 +1098,14 @@ async def register_device(
 
     try:
 
-        await rem_upsert_user(session, user, device_count, expires_at)
-
-        await rem_register_hwid(session, user, device)
+        if estimated_days > 0:
+            await rem_upsert_user(session, user, device_count, expires_at)
+            await rem_register_hwid(session, user, device)
+        else:
+            rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == user.id))
+            if rem_user and rem_user.panel_uuid:
+                await rem_delete_user(rem_user.panel_uuid)
+                await session.delete(rem_user)
 
     except Exception:
 
@@ -1163,9 +1171,14 @@ async def delete_device(
 
     try:
 
-        await rem_upsert_user(session, user, device_count, expires_at)
-
-        await rem_delete_hwid(session, user, device.fingerprint)
+        if estimated_days > 0:
+            await rem_upsert_user(session, user, device_count, expires_at)
+            await rem_delete_hwid(session, user, device.fingerprint)
+        else:
+            rem_user = await session.scalar(select(models.RemUser).where(models.RemUser.user_id == user.id))
+            if rem_user and rem_user.panel_uuid:
+                await rem_delete_user(rem_user.panel_uuid)
+                await session.delete(rem_user)
 
     except Exception:
 
