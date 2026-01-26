@@ -907,10 +907,11 @@ async def create_topup(
         amount_value = f"{payload.amount:.2f}"
         idem_key = str(uuid.uuid4())
 
+        return_url = settings.payment_return_url or f"{settings.webapp_url}?paid={payment.id}"
         payment_response = Payment.create(
             {
                 "amount": {"value": amount_value, "currency": "RUB"},
-                "confirmation": {"type": "redirect", "return_url": f"{settings.webapp_url}?paid={payment.id}"},
+                "confirmation": {"type": "redirect", "return_url": return_url},
                 "capture": True,
                 "payment_method_data": {"type": "sbp"},
                 "description": f"1VPN пополнение #{payment.id}",

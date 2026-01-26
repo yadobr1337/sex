@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     webapp_url: str
     yookassa_shop_id: str
     yookassa_secret_key: str
+    payment_return_url: str | None = None
     admin_secret: str
     admin_tg_id: str | None = None
     database_url: str = "sqlite+aiosqlite:///./data.db"
