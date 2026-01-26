@@ -10,10 +10,14 @@ const el = (id) => document.getElementById(id);
 function openPayUrl(url) {
   if (!url) return;
   if (tg && tg.openLink) {
-    tg.openLink(url);
-  } else {
-    window.location.href = url;
+    try {
+      tg.openLink(url, { try_instant_view: false });
+      return;
+    } catch {
+      // fall through
+    }
   }
+  window.location.href = url;
 }
 
 async function api(path, options = {}) {
