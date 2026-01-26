@@ -884,10 +884,15 @@ async def create_topup(
 
 
 
-    provider = (payload.provider or "sbp").lower()
-    if provider not in {"sbp", "tpay", "tinkoff", "tinkoff_bank"}:
-        raise HTTPException(status_code=400, detail="Only SBP and T-Pay are available")
-    provider = "tpay" if provider in {"tpay", "tinkoff", "tinkoff_bank"} else "sbp"
+    provider = (payload.provider or "all").lower()
+    if provider not in {"sbp", "tpay", "tinkoff", "tinkoff_bank", "all", "any"}:
+        raise HTTPException(status_code=400, detail="Only SBP, T-Pay, or all methods are available")
+    if provider in {"tpay", "tinkoff", "tinkoff_bank"}:
+        provider = "tpay"
+    elif provider == "sbp":
+        provider = "sbp"
+    else:
+        provider = "all"
     payment = models.Payment(user_id=user.id, amount=payload.amount, status="pending", provider=provider)
 
     session.add(payment)
@@ -910,18 +915,19 @@ async def create_topup(
 
         return_url = settings.payment_return_url or f"{settings.webapp_url}?paid={payment.id}"
         payment_method_type = "tinkoff_bank" if provider == "tpay" else "sbp"
+        create_payload = {
+            "amount": {"value": amount_value, "currency": "RUB"},
+            "confirmation": {"type": "redirect", "return_url": return_url},
+            "capture": True,
+            "description": f"1VPN topup #{payment.id}",
+            "metadata": {"payment_id": payment.id},
+        }
+        if provider != "all":
+            create_payload["payment_method_data"] = {"type": payment_method_type}
         payment_response = Payment.create(
-            {
-                "amount": {"value": amount_value, "currency": "RUB"},
-                "confirmation": {"type": "redirect", "return_url": return_url},
-                "capture": True,
-                "payment_method_data": {"type": payment_method_type},
-                "description": f"1VPN пополнение #{payment.id}",
-                "metadata": {"payment_id": payment.id},
-            },
+            create_payload,
             idempotency_key=idem_key,
         )
-
         payment.provider_payment_id = payment_response.id
 
         await session.commit()
