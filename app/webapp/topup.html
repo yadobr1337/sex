@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="/static/styles.css">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px;}
-    .topup-card { max-width: 420px; width: 100%; background: var(--card); border:1px solid rgba(255,255,255,0.1); padding:20px; border-radius:16px; box-shadow:0 20px 40px rgba(0,0,0,0.35);}
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .topup-card { max-width: 420px; width: 100%; background: var(--card); border:1px solid rgba(255,255,255,0.1); padding:20px; border-radius:16px; box-shadow:0 20px 40px rgba(0,0,0,0.35); }
     .topup-card h1 { margin:0 0 10px; }
     .topup-card .quick { display:flex; gap:8px; margin:10px 0; }
     .provider-btn.active { border-color: var(--accent-bright); box-shadow: 0 0 0 1px rgba(74,63,176,0.6); background: linear-gradient(135deg, var(--accent-bright), var(--primary)); color: #fff; }
@@ -38,11 +38,10 @@
     </div>
     <div class="label" style="text-align:center">Способ оплаты:</div>
     <div class="quick" style="justify-content:center; margin-top:6px;" id="provider-buttons">
-      <button class="ghost provider-btn active" type="button" data-provider="all">Все</button>
       <button class="ghost provider-btn" type="button" data-provider="sbp">СБП</button>
-      <button class="ghost provider-btn" type="button" data-provider="tpay">T-Pay</button>
+      <button class="ghost provider-btn active" type="button" data-provider="card">Карта</button>
     </div>
-    <div class="label" style="text-align:center" id="hint">Все способы</div>
+    <div class="label" style="text-align:center" id="hint">Карта</div>
     <button class="accent" id="topup-submit" type="button">Пополнить баланс</button>
     <button class="ghost history-btn" id="history-btn" type="button" style="margin-top:10px;">История пополнений</button>
   </div>
