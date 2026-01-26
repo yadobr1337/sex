@@ -885,8 +885,9 @@ async def create_topup(
 
 
     provider = (payload.provider or "sbp").lower()
-    if provider != "sbp":
-        raise HTTPException(status_code=400, detail="Доступна только оплата СБП")
+    if provider not in {"sbp", "tpay", "tinkoff", "tinkoff_bank"}:
+        raise HTTPException(status_code=400, detail="Only SBP and T-Pay are available")
+    provider = "tpay" if provider in {"tpay", "tinkoff", "tinkoff_bank"} else "sbp"
     payment = models.Payment(user_id=user.id, amount=payload.amount, status="pending", provider=provider)
 
     session.add(payment)
@@ -908,12 +909,13 @@ async def create_topup(
         idem_key = str(uuid.uuid4())
 
         return_url = settings.payment_return_url or f"{settings.webapp_url}?paid={payment.id}"
+        payment_method_type = "tinkoff_bank" if provider == "tpay" else "sbp"
         payment_response = Payment.create(
             {
                 "amount": {"value": amount_value, "currency": "RUB"},
                 "confirmation": {"type": "redirect", "return_url": return_url},
                 "capture": True,
-                "payment_method_data": {"type": "sbp"},
+                "payment_method_data": {"type": payment_method_type},
                 "description": f"1VPN пополнение #{payment.id}",
                 "metadata": {"payment_id": payment.id},
             },
