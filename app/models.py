@@ -91,6 +91,30 @@ class AdminCredential(Base):
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=dt.datetime.utcnow)
 
 
+class AdminLoginAttempt(Base):
+    __tablename__ = "admin_login_attempts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(String(64), index=True)
+    ip: Mapped[str] = mapped_column(String(64), index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    first_attempt_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=dt.datetime.utcnow)
+    blocked_until: Mapped[Optional[dt.datetime]] = mapped_column(DateTime(timezone=True))
+
+
+class AdminLoginRequest(Base):
+    __tablename__ = "admin_login_requests"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    username: Mapped[str] = mapped_column(String(64))
+    ip: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    token: Mapped[Optional[str]] = mapped_column(String(256))
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=dt.datetime.utcnow)
+    expires_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True))
+    decided_at: Mapped[Optional[dt.datetime]] = mapped_column(DateTime(timezone=True))
+
+
 class AppSetting(Base):
     __tablename__ = "app_settings"
 

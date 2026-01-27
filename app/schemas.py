@@ -186,3 +186,7 @@ class AdminLogin(BaseModel):
 class AdminCredUpdate(BaseModel):
     username: str
     password: str
+
+
+class AdminLoginStatus(BaseModel):
+    request_id: str

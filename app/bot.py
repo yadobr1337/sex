@@ -2,8 +2,12 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
+from sqlalchemy import select
 
 from .config import settings
+from .database import AsyncSessionLocal
+from . import models
+from .utils import create_admin_ui_token, now_utc
 
 
 def webapp_keyboard() -> InlineKeyboardMarkup:
@@ -88,3 +92,41 @@ async def cb_accept_policy(query: CallbackQuery):
         return
     await query.message.edit_text("Р“РѕС‚РѕРІРѕ! РћС‚РєСЂС‹РІР°Р№С‚Рµ РјРёРЅРё-РїСЂРёР»РѕР¶РµРЅРёРµ 1VPN.", reply_markup=webapp_keyboard())
     await query.answer()
+
+@dp.callback_query(F.data.startswith("admin_login:"))
+async def cb_admin_login(query: CallbackQuery):
+    parts = (query.data or "").split(":")
+    if len(parts) != 3:
+        await query.answer("Invalid request", show_alert=True)
+        return
+    action, req_id = parts[1], parts[2]
+    async with AsyncSessionLocal() as session:
+        req = await session.get(models.AdminLoginRequest, req_id)
+        if not req:
+            await query.answer("Request expired", show_alert=True)
+            return
+        if req.status != "pending":
+            await query.answer("Already handled", show_alert=True)
+            return
+        if req.expires_at and req.expires_at < now_utc():
+            req.status = "expired"
+            req.decided_at = now_utc()
+            await session.commit()
+            await query.answer("Request expired", show_alert=True)
+            return
+        if action == "approve":
+            req.status = "approved"
+            req.token = create_admin_ui_token(req.username)
+            req.decided_at = now_utc()
+            await session.commit()
+            await query.message.edit_text("Доступ подтвержден ?")
+            await query.answer("Одобрено")
+            return
+        if action == "deny":
+            req.status = "denied"
+            req.decided_at = now_utc()
+            await session.commit()
+            await query.message.edit_text("Доступ отклонён ?")
+            await query.answer("Отклонено")
+            return
+    await query.answer("Ошибка", show_alert=True)

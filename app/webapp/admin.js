@@ -59,13 +59,54 @@ el("login-btn").onclick = async () => {
     const username = el("login-username").value.trim();
     const password = el("login-password").value.trim();
     const resp = await api("/admin/ui/login", { username, password });
-    token = resp.token;
-    localStorage.setItem("admin_ui_token", token);
-    showPanel();
+    if (resp.status === "pending") {
+      setStatus("Подтвердите вход в Telegram", true);
+      await pollLoginStatus(resp.request_id);
+      return;
+    }
+    if (resp.token) {
+      token = resp.token;
+      localStorage.setItem("admin_ui_token", token);
+      showPanel();
+      return;
+    }
+    throw new Error("Ошибка входа");
   } catch (e) {
     setStatus(e.message, false);
   }
 };
+
+async function pollLoginStatus(requestId) {
+  const started = Date.now();
+  while (Date.now() - started < 10 * 60 * 1000) {
+    try {
+      const res = await fetch("/admin/ui/login/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ request_id: requestId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.status === "approved" && data.token) {
+        token = data.token;
+        localStorage.setItem("admin_ui_token", token);
+        showPanel();
+        return;
+      }
+      if (data.status === "denied") {
+        setStatus("Вход отклонён", false);
+        return;
+      }
+      if (data.status === "expired") {
+        setStatus("Запрос истёк, попробуйте снова", false);
+        return;
+      }
+    } catch {
+      // ignore
+    }
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  setStatus("Запрос истёк, попробуйте снова", false);
+}
 
 el("save-creds").onclick = async () => {
   const username = el("new-username").value.trim();
