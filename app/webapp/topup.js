@@ -12,6 +12,19 @@ let pricePerDay = 10;
 
 const el = (id) => document.getElementById(id);
 
+function bindTap(node, handler) {
+  if (!node) return;
+  node.addEventListener("click", handler, { passive: true });
+  node.addEventListener(
+    "touchend",
+    (e) => {
+      e.preventDefault();
+      handler();
+    },
+    { passive: false }
+  );
+}
+
 function openPayUrl(url) {
   if (!url) return;
   if (tg && tg.openLink) {
@@ -92,18 +105,18 @@ function showPayments() {
 }
 
 document.querySelectorAll(".quick button").forEach((btn) => {
-  btn.onclick = () => {
+  bindTap(btn, () => {
     el("topup-amount").value = btn.dataset.amount;
-  };
+  });
 });
 
 document.querySelectorAll(".provider-btn").forEach((btn) => {
-  btn.onclick = () => {
+  bindTap(btn, () => {
     document.querySelectorAll(".provider-btn").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     provider = btn.dataset.provider || "card";
     el("hint").textContent = provider === "sbp" ? "СБП" : "Карта";
-  };
+  });
 });
 
 async function loadPrice() {
@@ -125,11 +138,11 @@ async function loadPrice() {
   }
 }
 
-el("topup-submit").onclick = topup;
-el("back-btn").onclick = () => {
-  window.location.href = "/";
-};
 const historyBtn = el("history-btn");
-if (historyBtn) historyBtn.onclick = showPayments;
+bindTap(el("topup-submit"), topup);
+bindTap(el("back-btn"), () => {
+  window.location.href = "/";
+});
+if (historyBtn) bindTap(historyBtn, showPayments);
 
 loadPrice();
