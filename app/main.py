@@ -1617,67 +1617,9 @@ async def admin_ui_login(payload: AdminLogin, request: Request, session: AsyncSe
     if attempt:
         await session.delete(attempt)
 
-    admin_id = settings.admin_tg_id or "923039469"
-    req_id = uuid.uuid4().hex
-    expires_at = now + timedelta(minutes=10)
-    session.add(
-        models.AdminLoginRequest(
-            id=req_id,
-            username=payload.username,
-            ip=ip,
-            status="pending",
-            expires_at=expires_at,
-        )
-    )
+    token = create_admin_ui_token(payload.username)
     await session.commit()
-
-    try:
-        keyboard = types.InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    types.InlineKeyboardButton(text="✅ Одобрить", callback_data=f"admin_login:approve:{req_id}"),
-                    types.InlineKeyboardButton(text="❌ Отклонить", callback_data=f"admin_login:deny:{req_id}"),
-                ]
-            ]
-        )
-        await bot.send_message(
-            int(admin_id),
-            f"Запрос входа в админку\nПользователь: {payload.username}\nIP: {ip}\nДействителен 10 минут.",
-            reply_markup=keyboard,
-        )
-    except Exception:
-        await session.execute(delete(models.AdminLoginRequest).where(models.AdminLoginRequest.id == req_id))
-        await session.commit()
-        raise HTTPException(status_code=503, detail="Failed to send approval")
-
-    return {"status": "pending", "request_id": req_id}
-
-
-@app.post("/admin/ui/login/status")
-async def admin_ui_login_status(payload: AdminLoginStatus, session: AsyncSession = Depends(get_session)):
-    req = await session.get(models.AdminLoginRequest, payload.request_id)
-    if not req:
-        return {"status": "expired"}
-    now = now_utc()
-    if req.status == "pending":
-        expires_at = req.expires_at
-        if expires_at and expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
-        if expires_at and expires_at < now:
-            req.status = "expired"
-            req.decided_at = now
-            await session.commit()
-            return {"status": "expired"}
-    if req.status == "approved" and req.token:
-        token = req.token
-        await session.delete(req)
-        await session.commit()
-        return {"status": "approved", "token": token}
-    if req.status == "denied":
-        await session.delete(req)
-        await session.commit()
-        return {"status": "denied"}
-    return {"status": req.status}
+    return {"token": token}
 
 
 
