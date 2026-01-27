@@ -1,7 +1,12 @@
 const tg = window.Telegram?.WebApp;
 if (tg) tg.ready();
 
-const initData = tg?.initData || new URLSearchParams(window.location.search).get("init") || localStorage.getItem("initData") || "";
+const initData =
+  tg?.initData ||
+  new URLSearchParams(window.location.search).get("init") ||
+  localStorage.getItem("initData") ||
+  "";
+
 let provider = "card";
 let pricePerDay = 10;
 
@@ -97,7 +102,7 @@ document.querySelectorAll(".provider-btn").forEach((btn) => {
     document.querySelectorAll(".provider-btn").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     provider = btn.dataset.provider || "card";
-    el("hint").textContent = provider === "sbp" ? "???" : "?????";
+    el("hint").textContent = provider === "sbp" ? "СБП" : "Карта";
   };
 });
 
@@ -114,7 +119,7 @@ async function loadPrice() {
       b.textContent = "+" + values[idx];
       b.dataset.amount = values[idx];
     });
-    el("hint").textContent = provider === "sbp" ? "???" : "?????";
+    el("hint").textContent = provider === "sbp" ? "СБП" : "Карта";
   } catch {
     // ignore
   }

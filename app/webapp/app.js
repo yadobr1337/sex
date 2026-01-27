@@ -301,7 +301,44 @@ function setDevicesCount() {
     var desired = parseInt(range.value, 10);
     backdrop.remove();
     if (!desired || desired < 1) return;
+    if (!canAffordDevices(desired, current)) {
+      showInsufficientDevices(desired);
+      return;
+    }
     adjustDevices(desired);
+  };
+}
+
+function canAffordDevices(desired, current) {
+  if (desired <= current) return true;
+  if (!state) return false;
+  var balance = Number(state.balance || 0);
+  var price = Number(state.price_per_day || 0);
+  if (!price) return false;
+  return balance >= price * desired;
+}
+
+function showInsufficientDevices(desired) {
+  if (tg && tg.showPopup) {
+    tg.showPopup({
+      message: "Недостаточно баланса для " + desired + " устройств. Пополните баланс.",
+    });
+    return;
+  }
+  var backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  var card = document.createElement("div");
+  card.className = "modal-card";
+  card.innerHTML =
+    "<h3>Недостаточно баланса</h3>" +
+    "<div class='label'>Пополните баланс, чтобы увеличить до " +
+    desired +
+    " устройств.</div>" +
+    "<div class='modal-actions'><button class='accent' id='insufficient-ok'>OK</button></div>";
+  backdrop.appendChild(card);
+  document.body.appendChild(backdrop);
+  card.querySelector("#insufficient-ok").onclick = function () {
+    backdrop.remove();
   };
 }
 
