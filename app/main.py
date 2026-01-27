@@ -1576,12 +1576,20 @@ async def admin_ui_login(payload: AdminLogin, request: Request, session: AsyncSe
             models.AdminLoginAttempt.ip == ip,
         )
     )
-    if attempt and attempt.blocked_until and attempt.blocked_until > now:
-        raise HTTPException(status_code=429, detail="Too many attempts. Try later.")
-    if attempt and attempt.first_attempt_at and now - attempt.first_attempt_at > timedelta(minutes=10):
-        attempt.attempts = 0
-        attempt.first_attempt_at = now
-        attempt.blocked_until = None
+    if attempt and attempt.blocked_until:
+        blocked_until = attempt.blocked_until
+        if blocked_until.tzinfo is None:
+            blocked_until = blocked_until.replace(tzinfo=timezone.utc)
+        if blocked_until > now:
+            raise HTTPException(status_code=429, detail="Too many attempts. Try later.")
+    if attempt and attempt.first_attempt_at:
+        first_attempt_at = attempt.first_attempt_at
+        if first_attempt_at.tzinfo is None:
+            first_attempt_at = first_attempt_at.replace(tzinfo=timezone.utc)
+        if now - first_attempt_at > timedelta(minutes=10):
+            attempt.attempts = 0
+            attempt.first_attempt_at = now
+            attempt.blocked_until = None
 
     cred = await session.scalar(select(models.AdminCredential).where(models.AdminCredential.username == payload.username))
     if not cred or cred.password != payload.password:
@@ -1598,8 +1606,12 @@ async def admin_ui_login(payload: AdminLogin, request: Request, session: AsyncSe
             if attempt.attempts >= 3:
                 attempt.blocked_until = now + timedelta(minutes=10)
         await session.commit()
-        if attempt and attempt.blocked_until and attempt.blocked_until > now:
-            raise HTTPException(status_code=429, detail="Too many attempts. Try later.")
+        if attempt and attempt.blocked_until:
+            blocked_until = attempt.blocked_until
+            if blocked_until.tzinfo is None:
+                blocked_until = blocked_until.replace(tzinfo=timezone.utc)
+            if blocked_until > now:
+                raise HTTPException(status_code=429, detail="Too many attempts. Try later.")
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     if attempt:
@@ -1647,11 +1659,15 @@ async def admin_ui_login_status(payload: AdminLoginStatus, session: AsyncSession
     if not req:
         return {"status": "expired"}
     now = now_utc()
-    if req.status == "pending" and req.expires_at < now:
-        req.status = "expired"
-        req.decided_at = now
-        await session.commit()
-        return {"status": "expired"}
+    if req.status == "pending":
+        expires_at = req.expires_at
+        if expires_at and expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at and expires_at < now:
+            req.status = "expired"
+            req.decided_at = now
+            await session.commit()
+            return {"status": "expired"}
     if req.status == "approved" and req.token:
         token = req.token
         await session.delete(req)
