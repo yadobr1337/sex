@@ -384,6 +384,10 @@ var connectBtnInit = el("connect-btn");
 if (connectBtnInit) connectBtnInit.onclick = openLink;
 
 function runGate() {
+  if (!initData) {
+    showGate("Не удалось получить данные из Telegram. Откройте мини-приложение из бота.", []);
+    return;
+  }
   api("/api/init", { method: "POST", body: { initData: initData } })
     .then(function () {
       gateReady = true;
@@ -393,10 +397,10 @@ function runGate() {
       }
       if (!policyAccepted) {
         showGate(
-          "??????????? ? ????????? ??????????????????, ????? ??????? 1VPN.",
+          "Согласие с политикой конфиденциальности обязательно для доступа в 1VPN.",
           [
             {
-              text: "????????",
+              text: "Согласен",
               onClick: function () {
                 policyAccepted = true;
                 localStorage.setItem("policyAccepted", "1");
@@ -427,16 +431,16 @@ function runGate() {
     })
     .catch(function () {
       if (gateReady) {
-        showGate("?? ??????? ????????? ??????. ????????? ???????.", [
-          { text: "?????????", onClick: function () { runGate(); } },
+        showGate("Не удалось получить данные. Повторите попытку.", [
+          { text: "Повторить", onClick: function () { runGate(); } },
         ]);
         return;
       }
       if (gateErrorTimer) return;
       gateErrorTimer = setTimeout(function () {
         if (gateReady) return;
-        showGate("?? ??????? ????????? ??????. ????????? ???????.", [
-          { text: "?????????", onClick: function () { runGate(); } },
+        showGate("Не удалось получить данные. Повторите попытку.", [
+          { text: "Повторить", onClick: function () { runGate(); } },
         ]);
       }, 3000);
     });
