@@ -165,9 +165,12 @@ body {
 }
 
 #trial-btn {
-  background: linear-gradient(135deg, #1f7a3a, #0f5a2a);
-  border: 1px solid rgba(54, 214, 120, 0.35);
-  box-shadow: 0 10px 24px rgba(34, 139, 72, 0.28);
+  background: linear-gradient(135deg, #5a0f17, #2e070c);
+  border: 1px solid rgba(255, 86, 98, 0.35);
+  box-shadow: 0 10px 24px rgba(90, 15, 23, 0.35);
+  justify-self: start;
+  width: auto;
+  padding: 10px 16px;
 }
 
 .primary:active, .accent:active, .ghost:active {
