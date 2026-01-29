@@ -164,6 +164,12 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+#trial-btn {
+  background: linear-gradient(135deg, #1f7a3a, #0f5a2a);
+  border: 1px solid rgba(54, 214, 120, 0.35);
+  box-shadow: 0 10px 24px rgba(34, 139, 72, 0.28);
+}
+
 .primary:active, .accent:active, .ghost:active {
   transform: translateY(1px);
   opacity: 0.9;
