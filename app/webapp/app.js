@@ -8,10 +8,21 @@ if (!tg) {
   document.documentElement.style.background = "#000";
 }
 
-var initData = (tg && tg.initData) || localStorage.getItem("initData") || "";
+function getInitFromUrl() {
+  try {
+    var params = new URLSearchParams(window.location.search);
+    return params.get("init") || "";
+  } catch (e) {
+    return "";
+  }
+}
+
+var initData = (tg && tg.initData) || localStorage.getItem("initData") || getInitFromUrl() || "";
 var state = null;
 var policyAccepted = localStorage.getItem("policyAccepted") === "1";
 var stateTimer = null;
+var gateErrorTimer = null;
+var gateReady = false;
 var prev = {};
 
 function el(id) {
@@ -204,6 +215,8 @@ function loadState() {
     }
     var openAdmin = document.getElementById("open-admin");
     if (openAdmin) openAdmin.hidden = !state.is_admin;
+    var trialBtn = el("trial-btn");
+    if (trialBtn) trialBtn.style.display = state.trial_available ? "inline-flex" : "none";
     var deviceSection = el("device-section");
     if (deviceSection) {
       if (!suspended && state.link) {
@@ -232,6 +245,18 @@ function topup() {
   var init = (tg && tg.initData) || localStorage.getItem("initData") || "";
   var url = "/static/topup.html" + (init ? "?init=" + encodeURIComponent(init) : "");
   window.location.href = url;
+}
+
+function claimTrial() {
+  api("/api/trial", { method: "POST" })
+    .then(function () {
+      loadState().catch(function () {});
+    })
+    .catch(function (e) {
+      if (tg && tg.showPopup) {
+        tg.showPopup({ message: e.message || "Не удалось получить бесплатный день" });
+      }
+    });
 }
 
 function deleteDevice(id) {
@@ -380,12 +405,23 @@ function openLink() {
 el("topup-btn").onclick = topup;
 el("add-device").onclick = setDevicesCount;
 el("copy-link").onclick = copyLink;
+var trialBtnInit = el("trial-btn");
+if (trialBtnInit) trialBtnInit.onclick = claimTrial;
 var connectBtnInit = el("connect-btn");
 if (connectBtnInit) connectBtnInit.onclick = openLink;
 
 function runGate() {
   if (!initData) {
-    showGate("Не удалось получить данные из Telegram. Откройте мини-приложение из бота.", []);
+    if (gateErrorTimer) return;
+    gateErrorTimer = setTimeout(function () {
+      gateErrorTimer = null;
+      initData = (tg && tg.initData) || localStorage.getItem("initData") || getInitFromUrl() || "";
+      if (!initData) {
+        showGate("Не удалось получить данные из Telegram. Откройте мини-приложение из бота.", []);
+        return;
+      }
+      runGate();
+    }, 3000);
     return;
   }
   api("/api/init", { method: "POST", body: { initData: initData } })

@@ -25,6 +25,7 @@ class User(Base):
     server_id: Mapped[Optional[int]] = mapped_column(ForeignKey("servers.id"))
     banned: Mapped[bool] = mapped_column(Boolean, default=False)
     link_suspended: Mapped[bool] = mapped_column(Boolean, default=False)
+    trial_claimed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=dt.datetime.utcnow)
     updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow)
 

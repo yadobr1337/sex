@@ -1,5 +1,6 @@
 from aiogram import Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 from sqlalchemy import select
@@ -18,18 +19,19 @@ def webapp_keyboard() -> InlineKeyboardMarkup:
         base_url = "https://the1priority.ru"
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Открыть 1VPN", web_app=WebAppInfo(url=base_url))],
-            [InlineKeyboardButton(text="Поддержка", url=f"https://t.me/{settings.support_username}")],
+            [InlineKeyboardButton(text="??????? 1VPN", web_app=WebAppInfo(url=base_url))],
+            [InlineKeyboardButton(text="?????????", url=f"https://t.me/{settings.support_username}")],
         ]
     )
 
 
-bot = Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode="HTML"))
+session = AiohttpSession(timeout=60)
+bot = Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode="HTML"), session=session)
 dp = Dispatcher()
 
 
 async def is_subscribed(user_id: int) -> bool:
-    """Проверка подписки на канал, если указан REQUIRED_CHANNEL."""
+    """???????? ???????? ?? ?????, ???? ?????? REQUIRED_CHANNEL."""
     if not settings.required_channel:
         return True
     try:
@@ -43,42 +45,42 @@ def subscribe_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                text="Подписаться",
+                text="???????????",
                 url=f"https://t.me/{settings.required_channel.lstrip('@')}" if settings.required_channel else "",
             )
         ],
-        [InlineKeyboardButton(text="Проверить", callback_data="check_sub")],
+        [InlineKeyboardButton(text="?????????", callback_data="check_sub")],
     ]
     if settings.policy_url:
-        buttons.append([InlineKeyboardButton(text="Политика конфиденциальности", url=settings.policy_url)])
+        buttons.append([InlineKeyboardButton(text="???????? ??????????????????", url=settings.policy_url)])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def policy_keyboard() -> InlineKeyboardMarkup:
     rows = []
     if settings.policy_url:
-        rows.append([InlineKeyboardButton(text="Политика конфиденциальности", url=settings.policy_url)])
-    rows.append([InlineKeyboardButton(text="Согласен", callback_data="accept_policy")])
+        rows.append([InlineKeyboardButton(text="???????? ??????????????????", url=settings.policy_url)])
+    rows.append([InlineKeyboardButton(text="????????", callback_data="accept_policy")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
-    await message.answer("Открыть мини-приложение 1VPN:", reply_markup=webapp_keyboard())
+    await message.answer("??????? ????-?????????? 1VPN:", reply_markup=webapp_keyboard())
 
 
-@dp.message(F.text.lower().contains("поддержка"))
+@dp.message(F.text.lower().contains("?????????"))
 async def support(message: Message):
-    await message.answer("Нажмите кнопку ниже, чтобы связаться с поддержкой.", reply_markup=webapp_keyboard())
+    await message.answer("??????? ?????? ????, ????? ????????? ? ??????????.", reply_markup=webapp_keyboard())
 
 
 @dp.callback_query(F.data == "check_sub")
 async def cb_check_sub(query: CallbackQuery):
     if not await is_subscribed(query.from_user.id):
-        await query.answer("Нет подписки на канал", show_alert=True)
+        await query.answer("??? ???????? ?? ?????", show_alert=True)
         return
     await query.message.edit_text(
-        "Подписка подтверждена. Согласитесь с политикой, чтобы открыть 1VPN.",
+        "???????? ????????????. ??????????? ? ?????????, ????? ??????? 1VPN.",
         reply_markup=policy_keyboard(),
     )
     await query.answer()
@@ -87,11 +89,12 @@ async def cb_check_sub(query: CallbackQuery):
 @dp.callback_query(F.data == "accept_policy")
 async def cb_accept_policy(query: CallbackQuery):
     if not await is_subscribed(query.from_user.id):
-        await query.message.edit_text("Сначала подпишитесь на канал.", reply_markup=subscribe_keyboard())
-        await query.answer("Нет подписки на канал", show_alert=True)
+        await query.message.edit_text("??????? ??????????? ?? ?????.", reply_markup=subscribe_keyboard())
+        await query.answer("??? ???????? ?? ?????", show_alert=True)
         return
-    await query.message.edit_text("Готово! Открывайте мини-приложение 1VPN.", reply_markup=webapp_keyboard())
+    await query.message.edit_text("??????! ?????????? ????-?????????? 1VPN.", reply_markup=webapp_keyboard())
     await query.answer()
+
 
 @dp.callback_query(F.data.startswith("admin_login:"))
 async def cb_admin_login(query: CallbackQuery):
@@ -119,14 +122,14 @@ async def cb_admin_login(query: CallbackQuery):
             req.token = create_admin_ui_token(req.username)
             req.decided_at = now_utc()
             await session.commit()
-            await query.message.edit_text("������ ����������� ?")
-            await query.answer("��������")
+            await query.message.edit_text("?????? ??????????? ?")
+            await query.answer("????????")
             return
         if action == "deny":
             req.status = "denied"
             req.decided_at = now_utc()
             await session.commit()
-            await query.message.edit_text("������ �������� ?")
-            await query.answer("���������")
+            await query.message.edit_text("?????? ???????? ?")
+            await query.answer("?????????")
             return
-    await query.answer("������", show_alert=True)
+    await query.answer("??????", show_alert=True)

@@ -46,6 +46,7 @@ class UserState(BaseModel):
     price_per_day: float
     estimated_days: int
     is_admin: bool
+    trial_available: bool
 
 
 class PaymentRequest(BaseModel):

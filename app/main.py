@@ -853,7 +853,24 @@ async def state(user: models.User = Depends(get_current_user), session: AsyncSes
         is_admin=settings.admin_tg_id == str(user.telegram_id),
         price_per_day=price_value,
         estimated_days=recalculated["estimated_days"],
+        trial_available=not user.trial_claimed,
     )
+
+@app.post("/api/trial")
+async def claim_trial(user: models.User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+    if user.trial_claimed:
+        raise HTTPException(status_code=400, detail="trial_already_claimed")
+    price_value = await get_price(session)
+    if not price_value or price_value <= 0:
+        raise HTTPException(status_code=400, detail="trial_unavailable")
+    credit = int(math.ceil(price_value))
+    user.balance += credit
+    user.trial_claimed = True
+    await session.commit()
+    await session.refresh(user)
+    recalculated = await recalc_subscription(session, user)
+    await session.commit()
+    return {"ok": True, "balance": user.balance, "estimated_days": recalculated["estimated_days"]}
 
 @app.get("/api/payments", response_model=list[PaymentOut])
 async def list_payments(user: models.User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
