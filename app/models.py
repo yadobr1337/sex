@@ -26,6 +26,7 @@ class User(Base):
     banned: Mapped[bool] = mapped_column(Boolean, default=False)
     link_suspended: Mapped[bool] = mapped_column(Boolean, default=False)
     trial_claimed: Mapped[bool] = mapped_column(Boolean, default=False)
+    trial_expires_at: Mapped[Optional[dt.datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=dt.datetime.utcnow)
     updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow)
 

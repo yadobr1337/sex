@@ -210,6 +210,15 @@ async def recalc_subscription(session: AsyncSession, user: models.User) -> dict:
         delta = sub_end - now_utc()
         prev_days = math.ceil(delta.total_seconds() / 86400)
 
+    if user.trial_expires_at:
+        trial_end = user.trial_expires_at
+        if trial_end.tzinfo is None:
+            trial_end = trial_end.replace(tzinfo=timezone.utc)
+            user.trial_expires_at = trial_end
+        if trial_end <= now_utc():
+            user.trial_expires_at = None
+            user.balance = 0
+
     # Если пользователь забанен — сразу блокируем доступ и выходим
     if user.banned:
         user.subscription_end = None
@@ -866,6 +875,7 @@ async def claim_trial(user: models.User = Depends(get_current_user), session: As
     credit = int(math.ceil(price_value))
     user.balance += credit
     user.trial_claimed = True
+    user.trial_expires_at = now_utc() + timedelta(days=1)
     await session.commit()
     await session.refresh(user)
     recalculated = await recalc_subscription(session, user)
